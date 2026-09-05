@@ -164,29 +164,19 @@ public class MainActivity extends AppCompatActivity {
                 File zipPath = new File(dataDir, name + ".zip");
                 if (zipPath.exists()) zipPath.delete();
                 zipFolder(dir, zipPath);
-                progressMsg("正在写入系统下载目录...");
+                progressMsg("正在保存到 Download 目录...");
                 String displayName = name + ".zip";
-                ContentValues cv = new ContentValues();
-                cv.put(MediaStore.Downloads.DISPLAY_NAME, displayName);
-                cv.put(MediaStore.Downloads.MIME_TYPE, "application/zip");
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    cv.put(MediaStore.Downloads.RELATIVE_PATH, "Download/");
-                    cv.put(MediaStore.Downloads.IS_PENDING, 1);
-                }
-                Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
-                if (uri == null) throw new Exception("无法写入下载目录");
-                OutputStream os = getContentResolver().openOutputStream(uri);
+                File downloadDir = android.os.Environment.getExternalStoragePublicDirectory(
+                        android.os.Environment.DIRECTORY_DOWNLOADS);
+                if (!downloadDir.exists()) downloadDir.mkdirs();
+                File zipOut = new File(downloadDir, displayName);
+                FileOutputStream fo = new FileOutputStream(zipOut);
                 FileInputStream in = new FileInputStream(zipPath);
-                copy(in, os);
+                copy(in, fo);
                 in.close();
-                os.close();
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    cv.clear();
-                    cv.put(MediaStore.Downloads.IS_PENDING, 0);
-                    getContentResolver().update(uri, cv, null, null);
-                }
-                    pendingExportZipPath = zipPath.getAbsolutePath();
-                result = "已保存到下载: " + displayName + " (" + (zipPath.length() / 1048576) + "MB)";
+                fo.close();
+                pendingExportZipPath = zipOut.getAbsolutePath();
+                result = "已保存到 Download/" + displayName + " (" + (zipOut.length() / 1048576) + "MB)";
                 jsCallback("{\"type\":\"exportDone\",\"ok\":true,\"msg\":" + org.json.JSONObject.quote(result) + "}");
             } catch (Exception e) {
                 // MediaStore 写入失败 → 兜底：弹系统保存对话框（默认下载目录，无需权限）
@@ -325,17 +315,16 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        /** 导出数据包 zip：立即返回，后台打包+写下载目录，结果经 exportDone 事件回报 */
+        /** 导出数据包 zip：立即返回。需先授予“所有文件访问”权限（跳转系统设置页开启） */
         @JavascriptInterface
         public void exportZip(String name) {
             runOnUiThread(() -> {
-                if (android.os.Build.VERSION.SDK_INT >= 33
-                        || checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                                == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                if (hasAllFilesAccess()) {
                     exportZipAsync(name);
                 } else {
                     pendingExportName = name;
-                    requestPermissions(new String[]{ android.Manifest.permission.WRITE_EXTERNAL_STORAGE }, REQ_STORAGE);
+                    toast("请在接下来的页面中开启“所有文件访问”权限");
+                    requestAllFilesAccess();
                 }
             });
         }
@@ -568,6 +557,26 @@ public class MainActivity extends AppCompatActivity {
         return out;
     }
 
+    private boolean hasAllFilesAccess() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            return android.os.Environment.isExternalStorageManager();
+        }
+        return checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestAllFilesAccess() {
+        try {
+            Intent i = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            startActivityForResult(i, REQ_STORAGE);
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+            } catch (Exception ignored) { }
+        }
+    }
+
     private void toast(String s) {
         runOnUiThread(() -> Toast.makeText(this, s, Toast.LENGTH_SHORT).show());
     }
@@ -718,11 +727,12 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQ_STORAGE) {
-            if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
-                    && pendingExportName != null) {
+            boolean granted = grantResults.length > 0
+                    && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            if (granted && pendingExportName != null) {
                 exportZipAsync(pendingExportName);
             } else {
-                jsCallback("{\"type\":\"exportDone\",\"ok\":false,\"msg\":\"未授予存储权限，无法保存到下载目录\"}");
+                jsCallback("{\"type\":\"exportDone\",\"ok\":false,\"msg\":\"未授予存储权限，无法导出\"}");
             }
             pendingExportName = null;
         }
