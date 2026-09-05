@@ -1365,28 +1365,45 @@
 
   // 导出对话框
   // 一键导出：把当前研究打包 zip 保存到本地（浏览器下载 / Android 写入系统下载目录）
+  function showExportSpinner(msg) {
+    let bar = document.getElementById("exportSpin");
+    if (!bar) {
+      bar = el("div");
+      bar.id = "exportSpin";
+      bar.style.cssText = "position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:3000;background:rgba(38,44,54,.97);border:1px solid #3a4150;border-radius:20px;padding:9px 20px;color:#e8ecf3;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.5)";
+      document.body.appendChild(bar);
+    }
+    bar.innerHTML = '<span class="mini-spin"></span>' + msg;
+    bar.style.display = "flex";
+  }
+  function hideExportSpinner() {
+    const bar = document.getElementById("exportSpin");
+    if (bar) bar.style.display = "none";
+  }
+
   function exportZipDirect() {
     if (!App.handle) return toast("请先打开数据");
     if (KStore.hasBridge() && App.handle.kind !== "local-zip" && App.handle.kind !== "local-folder") {
-      const name = App.handle.name;
-      toast("正在打包 zip 到系统下载目录...");
-      // 等待态：挂 export 事件监听，完成/失败后 toast 结果
+      showExportSpinner("正在打包 zip，请稍候…");
+      // 等待态：挂 export 事件监听，完成/失败后提示结果
       window.__androidEvent = (ev) => {
         if (ev.type === "exportProgress") {
-          toast(ev.msg || "正在打包...", 4000);
+          showExportSpinner(ev.msg || "正在打包...");
         } else if (ev.type === "exportDone") {
+          hideExportSpinner();
           toast(ev.msg || (ev.ok ? "导出完成" : "导出失败"), 4000);
         }
       };
-      window.AndroidBridge.exportZip(name);
+      window.AndroidBridge.exportZip(App.handle.name);
       return;
     }
     if (KStore.IS_SERVER && App.handle.kind === "server-folder") {
-      toast("正在打包 zip，开始下载...");
+      showExportSpinner("正在打包 zip，开始下载...");
       const a = document.createElement("a");
       a.href = "/api/exportZip?name=" + encodeURIComponent(App.handle.name);
       a.download = App.handle.name + ".zip";
       document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(hideExportSpinner, 3000);
       return;
     }
     toast("当前数据来自本地文件，无需导出", 2000);

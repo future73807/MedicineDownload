@@ -5,19 +5,21 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- 深蓝 → 医疗青 对角渐变背景 -->
+    <!-- 深空蓝对角渐变 -->
     <path android:pathData="M0,0 h108 v108 h-108 z">
         <aapt:attr name="android:fillColor">
             <gradient
                 android:startX="0" android:startY="0"
                 android:endX="108" android:endY="108"
                 android:type="linear">
-                <item android:offset="0.0" android:color="#FF16324F" />
-                <item android:offset="0.55" android:color="#FF1B4F72" />
-                <item android:offset="1.0" android:color="#FF1789A9" />
+                <item android:offset="0.0" android:color="#FF0B1220" />
+                <item android:offset="0.5" android:color="#FF122A4C" />
+                <item android:offset="1.0" android:color="#FF1D4E89" />
             </gradient>
         </aapt:attr>
     </path>
-    <!-- 右上柔光 -->
-    <path android:fillColor="#14FFFFFF" android:pathData="M54,54 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0" />
+    <!-- 左上柔光晕 -->
+    <path android:fillColor="#1A3B82F6" android:pathData="M30,26 m-34,0 a34,34 0 1,1 68,0 a34,34 0 1,1 -68,0" />
+    <!-- 右下青色微光 -->
+    <path android:fillColor="#2206B6D4" android:pathData="M82,84 m-30,0 a30,30 0 1,1 60,0 a30,30 0 1,1 -60,0" />
 </vector>

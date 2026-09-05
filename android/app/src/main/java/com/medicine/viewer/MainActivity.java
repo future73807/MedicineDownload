@@ -48,6 +48,8 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private File dataDir;
     private static final int REQ_IMPORT_ZIP = 1001;
+    private static final int REQ_STORAGE = 1002;
+    private String pendingExportName = null;
     private static final String IMAGE_SERVER = "https://www.kayicloud.com:11136/";
     private static final String UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36";
     private static final int CONCURRENCY = 6;
@@ -147,6 +149,45 @@ public class MainActivity extends AppCompatActivity {
             o.put("msg", msg);
             jsCallback(o.toString());
         } catch (Exception ignored) { }
+    }
+
+    private void exportZipAsync(String name) {
+        new Thread(() -> {
+            String result;
+            try {
+                File dir = new File(dataDir, name);
+                if (!new File(dir, "study.json").exists()) { result = "数据不存在"; throw new Exception(result); }
+                progressMsg("正在打包 zip...");
+                File zipPath = new File(dataDir, name + ".zip");
+                if (zipPath.exists()) zipPath.delete();
+                zipFolder(dir, zipPath);
+                progressMsg("正在写入系统下载目录...");
+                String displayName = name + ".zip";
+                ContentValues cv = new ContentValues();
+                cv.put(MediaStore.Downloads.DISPLAY_NAME, displayName);
+                cv.put(MediaStore.Downloads.MIME_TYPE, "application/zip");
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    cv.put(MediaStore.Downloads.RELATIVE_PATH, "Download/");
+                    cv.put(MediaStore.Downloads.IS_PENDING, 1);
+                }
+                Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                if (uri == null) throw new Exception("无法写入下载目录");
+                OutputStream os = getContentResolver().openOutputStream(uri);
+                FileInputStream in = new FileInputStream(zipPath);
+                copy(in, os);
+                in.close();
+                os.close();
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    cv.clear();
+                    cv.put(MediaStore.Downloads.IS_PENDING, 0);
+                    getContentResolver().update(uri, cv, null, null);
+                }
+                result = "已保存到下载: " + displayName + " (" + (zipPath.length() / 1048576) + "MB)";
+                jsCallback("{\"type\":\"exportDone\",\"ok\":true,\"msg\":" + org.json.JSONObject.quote(result) + "}");
+            } catch (Exception e) {
+                jsCallback("{\"type\":\"exportDone\",\"ok\":false,\"msg\":" + org.json.JSONObject.quote("导出失败: " + e.getMessage()) + "}");
+            }
+        }).start();
     }
 
     private void toast(String s) {
@@ -276,37 +317,16 @@ public class MainActivity extends AppCompatActivity {
         /** 导出数据包 zip：立即返回，后台打包+写下载目录，结果经 exportDone 事件回报 */
         @JavascriptInterface
         public void exportZip(String name) {
-            exportZipAsync(name);
-        }
-
-        private void exportZipAsync(String name) {
-            new Thread(() -> {
-                String result;
-                try {
-                    File dir = new File(dataDir, name);
-                    if (!new File(dir, "study.json").exists()) { result = "数据不存在"; throw new Exception(result); }
-                    progressMsg("正在打包 zip...");
-                    File zipPath = new File(dataDir, name + ".zip");
-                    if (zipPath.exists()) zipPath.delete();
-                    zipFolder(dir, zipPath);
-                    progressMsg("正在写入系统下载目录...");
-                    String displayName = name + ".zip";
-                    ContentValues cv = new ContentValues();
-                    cv.put(MediaStore.Downloads.DISPLAY_NAME, displayName);
-                    cv.put(MediaStore.Downloads.MIME_TYPE, "application/zip");
-                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
-                    if (uri == null) throw new Exception("无法写入下载目录");
-                    OutputStream os = getContentResolver().openOutputStream(uri);
-                    FileInputStream in = new FileInputStream(zipPath);
-                    copy(in, os);
-                    in.close();
-                    os.close();
-                    result = "已保存到下载: " + displayName + " (" + (zipPath.length() / 1048576) + "MB)";
-                    jsCallback("{\"type\":\"exportDone\",\"ok\":true,\"msg\":" + org.json.JSONObject.quote(result) + "}");
-                } catch (Exception e) {
-                    jsCallback("{\"type\":\"exportDone\",\"ok\":false,\"msg\":" + org.json.JSONObject.quote("导出失败: " + e.getMessage()) + "}");
+            runOnUiThread(() -> {
+                if (android.os.Build.VERSION.SDK_INT >= 33
+                        || checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    exportZipAsync(name);
+                } else {
+                    pendingExportName = name;
+                    requestPermissions(new String[]{ android.Manifest.permission.WRITE_EXTERNAL_STORAGE }, REQ_STORAGE);
                 }
-            }).start();
+            });
         }
 
         /** 从分享链接下载数据（同网页版链路）。立即返回，取名/下载全在后台线程，前端即时进入等待态 */
@@ -679,6 +699,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ============ zip 导入 ============
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    && pendingExportName != null) {
+                exportZipAsync(pendingExportName);
+            } else {
+                jsCallback("{\"type\":\"exportDone\",\"ok\":false,\"msg\":\"未授予存储权限，无法保存到下载目录\"}");
+            }
+            pendingExportName = null;
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
