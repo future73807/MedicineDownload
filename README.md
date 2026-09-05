@@ -12,10 +12,7 @@ MedicineDownload/
 │   ├── assets/          # 前端资源（cornerstone/dicom-parser/jpeg-lossless 等开源库）
 │   ├── server.mjs       # 零依赖 Node 服务器（静态/数据列表/解压/下载任务/导出zip）
 │   └── 启动.bat
-├── data/                # ★ 数据目录：zip 或解压后的文件夹都可直接放入
-│   ├── 1_<患者>_<ID>_MR.zip       (438MB)
-│   ├── 2_<患者>_<ID>_PETCT.zip (70MB)
-│   ├── 3_<患者>_<ID>_MR.zip       (439MB)
+├── data/                # 数据目录：zip 或解压后的文件夹都可直接放入
 │   └── *.zip 对应的解压文件夹
 ├── tools/
 │   ├── download.mjs     # CLI 下载器（node tools/download.mjs [--only 1,2]）
@@ -27,6 +24,7 @@ MedicineDownload/
 ## 使用
 
 ### 网页版
+
 1. 双击 `app\启动.bat`（需 Node.js），浏览器自动打开 `http://127.0.0.1:8230`
 2. 开屏三种打开方式：
    - **数据包列表**：点击任意数据包直接查看（zip 自动解压）
@@ -34,6 +32,7 @@ MedicineDownload/
    - **输入网址和密码下载**：粘贴 kayicloud 分享链接 + 4位密码，自动全量下载并打包 zip 存入 data 目录
 
 ### Android app
+
 - APK：`android\app\build\outputs\apk\debug\app-debug.apk`（已装模拟器实测）
 - app 数据目录：`Android/data/com.medicine.viewer/files/data/`，放入数据 zip 后重启 app 即可识别
 - app 内同样支持：选择本地 zip（SAF）、输入网址+密码下载（原生下载引擎，进度实时显示）、

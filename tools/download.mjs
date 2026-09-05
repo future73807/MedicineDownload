@@ -1,5 +1,7 @@
 // CLI 下载器（复用 download-core）
-// 用法: node tools/download.mjs [--only 1,2] [--skip-zip]
+// 用法: node tools/download.mjs [--only 1,2]
+// 研究清单从 data/studies.local.json 读取（不入库，避免隐私泄露），格式：
+// [ { "id": 1, "shareId": "<uuid>", "password": "<4位>", "name": "<数据包名>" }, ... ]
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -7,12 +9,17 @@ import { downloadStudyToDisk } from "./download-core.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.resolve(__dirname, "..", "data");
+const LIST_FILE = path.join(DATA_DIR, "studies.local.json");
 
-const STUDIES = [
-  { id: 1, shareId: "<REDACTED-SHARE-ID>", password: "<REDACTED>", name: "1_<患者>_<ID>_MR" },
-  { id: 2, shareId: "<REDACTED-SHARE-ID>", password: "<REDACTED>", name: "2_<患者>_<ID>_PETCT" },
-  { id: 3, shareId: "<REDACTED-SHARE-ID>", password: "<REDACTED>", name: "3_<患者>_<ID>_MR" },
-];
+let STUDIES = [];
+try {
+  STUDIES = JSON.parse(fs.readFileSync(LIST_FILE, "utf8"));
+  if (!Array.isArray(STUDIES)) throw new Error("not array");
+} catch {
+  console.error(`未找到研究清单: ${LIST_FILE}`);
+  console.error('请创建该文件（勿提交到 git），格式: [{"id":1,"shareId":"<uuid>","password":"<4位>","name":"<数据包名>"}]');
+  process.exit(1);
+}
 
 const args = process.argv.slice(2);
 const onlyIdx = args.includes("--only") ? args[args.indexOf("--only") + 1].split(",").map(Number) : null;

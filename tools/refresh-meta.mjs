@@ -10,11 +10,16 @@ const IS = "https://www.kayicloud.com:11136/";
 const UA = "Mozilla/5.0";
 const b64 = s => Buffer.from(s, "utf8").toString("base64");
 
-const SOURCES = [
-  ["1_<患者>_<ID>_MR", "<REDACTED-SHARE-ID>", "<REDACTED>"],
-  ["2_<患者>_<ID>_PETCT", "<REDACTED-SHARE-ID>", "<REDACTED>"],
-  ["3_<患者>_<ID>_MR", "<REDACTED-SHARE-ID>", "<REDACTED>"],
-];
+// 研究清单从 data/studies.local.json 读取（不入库，避免隐私泄露）
+const SOURCES = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(DATA_DIR, "studies.local.json"), "utf8"))
+      .map(s => [s.name, s.shareId, s.password]);
+  } catch (e) {
+    console.error("未找到 data/studies.local.json，请创建（勿提交到 git）");
+    process.exit(1);
+  }
+})();
 
 async function getJson(url) {
   const r = await fetch(url, { headers: { "User-Agent": UA } });
