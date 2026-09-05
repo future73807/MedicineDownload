@@ -58,9 +58,12 @@ gradle wrapper --gradle-version 8.10.2   # 首次（本机已有 wrapper 可跳�
 gradlew.bat assembleDebug                # 产物: app/build/outputs/apk/debug/app-debug.apk
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 
-# —— 交付打包（打一个 zip 到 out\ 目录）——
-node tools/package.mjs                   # 程序+数据zip+APK（完整包，约1GB）
-node tools/package.mjs --no-data        # 仅程序+APK（小包）
+# —— 交付打包（输出到 out 目录，2×2 组合：web/apk × 含/不含数据）——
+node tools/package.mjs --web            # web 程序包（zip）
+node tools/package.mjs --web --data    # web 程序包 + 数据
+node tools/package.mjs --apk           # 仅 APK（直接输出 影像查看器.apk，不套 zip）
+node tools/package.mjs --apk --data    # APK + 数据 zip 一并输出
+node tools/package.mjs                 # web + apk 全打（不含数据）
 ```
 
 ## 数据包格式（文件夹与 zip 内部一致）
