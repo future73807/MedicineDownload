@@ -1,0 +1,13 @@
+# 大数据与产物不进 git
+data/
+out/
+node_modules/
+app/libs-src/node_modules/
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.log
+.video_agent/
+.v2c/
+.zcode/

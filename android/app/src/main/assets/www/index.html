@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>影像查看器</title>
+  <link rel="stylesheet" href="assets/css/viewer.css?v=3">
+</head>
+<body>
+  <div id="app">
+    <!-- 顶栏 -->
+    <header id="mainHeader">
+      <div class="logo">影像查看器</div>
+      <div class="header-btns">
+        <button id="btnHome" title="开屏/数据包" style="font-size:12px;width:auto;padding:0 8px">数据包</button>
+        <button id="btnAbout" title="关于"><svg class="viewer_icon"><use xlink:href="#ic-about"></use></svg></button>
+        <button id="btnExportZip" title="导出数据包(zip)"><svg class="viewer_icon"><use xlink:href="#ic-share"></use></svg></button>
+        <button id="btnFullscreen" title="全屏模式"><svg class="viewer_icon"><use xlink:href="#ic-fullscreen"></use></svg></button>
+      </div>
+    </header>
+
+    <!-- 工具栏 -->
+    <div id="toolBar">
+      <div class="tb-drop" id="modeDrop">
+        <button class="tb-btn"><svg class="viewer_icon mod-icon"><use xlink:href="#ic-applist"></use></svg><span class="module-name">2D Viewer</span><svg class="viewer_icon drop-icon desktop-only"><use xlink:href="#ic-dropmenu"></use></svg></button>
+        <ul class="tb-menu">
+          <li><button data-mode="2d">2D<span class="hotkey">(Shift+2)</span></button></li>
+          <li><button data-mode="mpr">MPR<span class="hotkey">(Shift+M)</span></button></li>
+          <li><button data-mode="3d">3D<span class="hotkey">(Shift+3)</span></button></li>
+          <li><button data-mode="endo">Endo</button></li>
+        </ul>
+      </div>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-tool="scroll" title="翻页 (S)"><svg class="viewer_icon"><use xlink:href="#ic-select"></use></svg></button>
+      <button class="tb-btn" data-tool="zoom" title="图像放缩 (Z)"><svg class="viewer_icon"><use xlink:href="#ic-zoom"></use></svg></button>
+      <button class="tb-btn" data-tool="pan" title="图像平移 (P)"><svg class="viewer_icon"><use xlink:href="#ic-pan"></use></svg></button>
+      <button class="tb-btn" data-tool="wl" title="调节窗宽窗位 (W)"><svg class="viewer_icon"><use xlink:href="#ic-wl"></use></svg></button>
+      <button class="tb-btn desktop-only" data-tool="rotate" title="旋转"><svg class="viewer_icon"><use xlink:href="#ic-roll"></use></svg></button>
+      <div class="tb-sep desktop-only"></div>
+      <!-- 伪彩 -->
+      <div class="tb-drop desktop-only" id="cmapDrop">
+        <button class="tb-btn" title="伪彩/自定义"><svg class="viewer_icon"><use xlink:href="#ic-wlpreset"></use></svg><svg class="viewer_icon drop-icon"><use xlink:href="#ic-dropmenu"></use></svg></button>
+        <ul class="tb-menu">
+          <li><button data-cmap="none">原始灰度</button></li>
+          <li><button data-cmap="hotIron">热金属</button></li>
+          <li><button data-cmap="hot">热图</button></li>
+          <li><button data-cmap="pet">PET</button></li>
+          <li><button data-cmap="jet">Jet</button></li>
+          <li><button data-cmap="gray">灰度反转</button></li>
+        </ul>
+      </div>
+      <div class="tb-sep"></div>
+      <!-- 测量 -->
+      <button class="tb-btn" data-tool="length" title="长度 (L)"><svg class="viewer_icon"><use xlink:href="#ic-length"></use></svg></button>
+      <button class="tb-btn desktop-only" data-tool="point" title="点标注"><svg class="viewer_icon"><use xlink:href="#ic-annovalue"></use></svg></button>
+      <button class="tb-btn" data-tool="ellipse" title="椭圆 (E)"><svg class="viewer_icon"><use xlink:href="#ic-ellipse"></use></svg></button>
+      <button class="tb-btn desktop-only" data-tool="delete" id="btnDeleteLast" title="删除标注"><svg class="viewer_icon"><use xlink:href="#ic-undo"></use></svg></button>
+      <!-- 角度下拉 -->
+      <div class="tb-drop" id="measureDrop">
+        <button class="tb-btn" title="角度及更多测量"><svg class="viewer_icon"><use xlink:href="#ic-angle"></use></svg><svg class="viewer_icon drop-icon"><use xlink:href="#ic-dropmenu"></use></svg></button>
+        <ul class="tb-menu">
+          <li><button data-tool="angle">角度</button></li>
+          <li><button data-tool="rect">矩形</button></li>
+          <li><button data-tool="textr">文本</button></li>
+          <li><button data-tool="cross">十字线</button></li>
+          <li><button data-tool="chestratio">心胸比</button></li>
+          <li><button data-tool="cobb">Cobb角</button></li>
+          <li><button data-tool="freehand">多边形</button></li>
+          <li><button data-tool="delete">删除标注</button></li>
+        </ul>
+      </div>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" id="btnExportImage" title="导出图像"><svg class="viewer_icon"><use xlink:href="#ic-save"></use></svg></button>
+      <!-- 信息菜单 -->
+      <div class="tb-drop" id="infoDrop">
+        <button class="tb-btn" title="患者信息"><svg class="viewer_icon"><use xlink:href="#ic-info"></use></svg><svg class="viewer_icon drop-icon"><use xlink:href="#ic-dropmenu"></use></svg></button>
+        <ul class="tb-menu">
+          <li><button id="btnToggleInfo">患者信息</button></li>
+          <li><button id="btnAnonymous">匿名</button></li>
+          <li><button id="btnDcmInfo">DCM</button></li>
+        </ul>
+      </div>
+      <div style="flex:1"></div>
+      <button class="tb-btn" id="btnHome2" title="数据包" style="display:none"></button>
+    </div>
+
+    <!-- 主区域 -->
+    <div id="mainArea">
+      <!-- 左侧面板（桌面） -->
+      <div id="leftPanel">
+        <div class="panel-section" id="secLayout">
+          <div class="sec-title">布局 <svg class="viewer_icon"><use xlink:href="#ic-menu-down"></use></svg></div>
+          <div class="sec-body">
+            <div class="sec-label">序列布局:</div>
+            <div class="layout-grid">
+              <button data-serlayout="11" title="1×1"><svg class="viewer_icon"><use xlink:href="#ic-layout11"></use></svg></button>
+              <button data-serlayout="12" title="1×2"><svg class="viewer_icon"><use xlink:href="#ic-layout1by2"></use></svg></button>
+              <button data-serlayout="21" title="2×1"><svg class="viewer_icon"><use xlink:href="#ic-layout21"></use></svg></button>
+              <button data-serlayout="22" title="2×2"><svg class="viewer_icon"><use xlink:href="#ic-layout22"></use></svg></button>
+              <button data-serlayout="33" title="3×3"><svg class="viewer_icon"><use xlink:href="#ic-layout33"></use></svg></button>
+            </div>
+            <div class="sec-label">图像布局:</div>
+            <div class="layout-grid">
+              <button data-imglayout="11" class="active" title="1×1"><svg class="viewer_icon"><use xlink:href="#ic-layout11"></use></svg></button>
+              <button data-imglayout="12" title="1×2"><svg class="viewer_icon"><use xlink:href="#ic-layout1by2"></use></svg></button>
+              <button data-imglayout="21" title="2×1"><svg class="viewer_icon"><use xlink:href="#ic-layout21"></use></svg></button>
+              <button data-imglayout="22" title="2×2"><svg class="viewer_icon"><use xlink:href="#ic-layout22"></use></svg></button>
+              <button data-imglayout="33" title="3×3"><svg class="viewer_icon"><use xlink:href="#ic-layout33"></use></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-section" id="secImgTools">
+          <div class="sec-title">图像工具 <svg class="viewer_icon"><use xlink:href="#ic-menu-down"></use></svg></div>
+          <div class="sec-body">
+            <div class="tool-grid">
+              <button id="btnRotCw" title="顺时针旋转"><svg class="viewer_icon"><use xlink:href="#ic-rotateclockwise"></use></svg></button>
+              <button id="btnRotCcw" title="逆时针旋转"><svg class="viewer_icon"><use xlink:href="#ic-rotateanticlockwise"></use></svg></button>
+              <button id="btnFlipH" title="水平镜像"><svg class="viewer_icon"><use xlink:href="#ic-hor-mirror"></use></svg></button>
+              <button id="btnFlipV" title="垂直镜像"><svg class="viewer_icon"><use xlink:href="#ic-ver-mirror"></use></svg></button>
+              <button id="btnInvert" title="反色"><svg class="viewer_icon"><use xlink:href="#ic-inverse"></use></svg></button>
+            </div>
+            <div class="sec-label" style="margin-top:10px">图像播放:</div>
+            <div class="play-row">
+              <button data-playprev title="首帧"><svg class="viewer_icon"><use xlink:href="#ic-backwardplay"></use></svg></button>
+              <button data-playtoggle id="btnPlay" title="图像播放"><svg class="viewer_icon"><use xlink:href="#ic-play"></use></svg></button>
+              <button data-playnext title="末帧"><svg class="viewer_icon"><use xlink:href="#ic-forwardplay"></use></svg></button>
+            </div>
+            <select class="fps-select" id="fpsSelect">
+              <option value="2">2 FPS</option>
+              <option value="4">4 FPS</option>
+              <option value="5">5 FPS</option>
+              <option value="10" selected>10 FPS</option>
+              <option value="20">20 FPS</option>
+              <option value="30">30 FPS</option>
+            </select>
+          </div>
+        </div>
+        <div class="panel-section" id="secLocalizer">
+          <div class="sec-body" style="padding:4px 10px">
+            <label class="check-row"><input type="checkbox" id="cbLocalizer" checked>图像定位线</label>
+          </div>
+        </div>
+        <div class="panel-section" id="secCompare">
+          <div class="sec-title">序列对比 <svg class="viewer_icon"><use xlink:href="#ic-menu-down"></use></svg></div>
+          <div class="sec-body">
+            <label class="check-row"><input type="checkbox" id="syncImageId">图像Id同步</label>
+            <label class="check-row"><input type="checkbox" id="syncAutoPos" checked>自动位置同步</label>
+            <label class="check-row"><input type="checkbox" id="syncManualPos">手动位置同步</label>
+            <label class="check-row"><input type="checkbox" id="syncZoomPan">放缩/平移/旋转</label>
+            <label class="check-row"><input type="checkbox" id="syncWwwl">窗宽窗位</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 视口 -->
+      <div id="viewportArea"></div>
+
+      <!-- 研究信息条（移动端：位于缩略图上方，与原版一致） -->
+      <div id="studyBar"></div>
+
+      <!-- 缩略图 -->
+      <div id="thumbPanel">
+        <div id="thumbHeader"></div>
+        <div id="thumbScroll"></div>
+        <div class="thumb-arrows">
+          <button id="thumbUp" title="向上滚动"><svg class="viewer_icon"><use xlink:href="#ic-menu-up"></use></svg></button>
+          <button id="thumbDown" title="向下滚动"><svg class="viewer_icon"><use xlink:href="#ic-menu-down"></use></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部播放条（移动端） -->
+    <div id="cineBar">
+      <button class="cb-btn" data-prevseries title="上一序列"><svg class="viewer_icon"><use xlink:href="#ic-page-left"></use></svg></button>
+      <input type="range" id="cineSlider" min="0" max="0" value="0">
+      <span class="cb-pos" id="cinePos">0/0</span>
+      <button class="cb-btn" data-playtoggle title="播放"><svg class="viewer_icon"><use xlink:href="#ic-play"></use></svg></button>
+      <button class="cb-btn" data-nextseries title="下一序列"><svg class="viewer_icon"><use xlink:href="#ic-page-right"></use></svg></button>
+    </div>
+  </div>
+
+  <div id="dlgLayer"></div>
+  <div id="toast"></div>
+
+  <script src="assets/lib/cornerstone.min.js?v=2.3.0"></script>
+  <script src="assets/lib/dicomParser.min.js?v=1"></script>
+  <script src="assets/lib/cornerstoneTools.min.js?v=1"></script>
+  <script src="assets/lib/fflate.js?v=1"></script>
+  <script src="assets/lib/jpegLossless.js?v=1"></script>
+  <script src="assets/js/icons.js?v=1"></script>
+  <script src="assets/js/dcm.js?v=4"></script>
+  <script src="assets/js/store.js?v=3"></script>
+  <script src="assets/js/app.js?v=14"></script>
+  <script src="assets/js/kmpr.js?v=2"></script>
+  <script>
+    function startApp() { try { window.KApp.init(); } catch (e) { console.error("init失败", e); const t = document.getElementById("toast"); if (t) { t.textContent = "初始化失败: " + e.message; t.style.display = "block"; } } }
+    if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", startApp);
+    else startApp();
+  </script>
+</body>
+</html>
