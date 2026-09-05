@@ -63,7 +63,11 @@ public class MainActivity extends AppCompatActivity {
         if (!dataDir.exists()) dataDir.mkdirs();
 
         webView = new WebView(this);
-        setContentView(webView, new ViewGroup.LayoutParams(
+        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
+        root.addView(webView, new android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+        setContentView(root, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         WebSettings ws = webView.getSettings();
@@ -107,11 +111,17 @@ public class MainActivity extends AppCompatActivity {
         webView.loadUrl("file:///android_asset/www/index.html");
 
         // edge-to-edge：内容避开状态栏/导航栏（Android 15 默认透明系统栏会盖住 WebView）
-        webView.setOnApplyWindowInsetsListener((v, insets) -> {
-            int top = insets.getSystemWindowInsetTop();
-            int bottom = insets.getSystemWindowInsetBottom();
-            v.setPadding(0, top, 0, bottom);
-            return insets.consumeSystemWindowInsets();
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                android.graphics.Insets bars = insets.getInsets(
+                        android.view.WindowInsets.Type.statusBars()
+                                | android.view.WindowInsets.Type.displayCutout()
+                                | android.view.WindowInsets.Type.navigationBars());
+                v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            } else {
+                v.setPadding(0, insets.getSystemWindowInsetTop(), 0, insets.getSystemWindowInsetBottom());
+            }
+            return android.view.WindowInsets.CONSUMED;
         });
     }
 
@@ -254,13 +264,15 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        /** 从分享链接下载数据（同网页版链路） */
+        /** 从分享链接下载数据（同网页版链路）。立即返回，取名/下载全在后台线程，前端即时进入等待态 */
         @JavascriptInterface
         public void downloadStudy(String shareId, String password, String name) {
-            final String fName = (name == null || name.trim().isEmpty())
-                    ? autoStudyName(shareId, password) : name;
+            progress("start", 0, 1, "正在连接服务器...");
             new Thread(() -> {
                 try {
+                    final String fName = (name == null || name.trim().isEmpty())
+                            ? autoStudyName(shareId, password) : name;
+                    progress("start", 0, 1, "验证分享密码...");
                     JSONObject result = downloadStudySync(shareId, password, fName);
                     JSONObject out = new JSONObject();
                     out.put("type", "downloadDone");

@@ -152,26 +152,31 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // API: 启动下载任务
+    // API: 启动下载任务（立即返回 jobId，取名与下载全在后台，前端即时进入等待态）
     if (p === "/api/downloadStudy") {
       const body = JSON.parse(await readBody(req));
       if (!/^[0-9a-f-]{36}$/i.test(body.shareId || "") || !/^\d{4}$/.test(body.password || ""))
         return sendJson(res, { ok: false, error: "参数不合法" });
-      let name = (body.name || "").replace(/[\\/:*?"<>|]/g, "_").trim();
-      if (!name) {
-        try {
-          const info = await fetchShareInfo(body.shareId, body.password);
-          name = `${info.patientName || "study"}_${info.patientId || ""}_${info.modality || ""}`.replace(/\s+/g, "_");
-        } catch { name = "study_" + Date.now(); }
-      }
+      const customName = (body.name || "").replace(/[\\/:*?"<>|]/g, "_").trim();
       const jobId = String(jobSeq++);
-      const job = { stage: "start", cur: 0, total: 1, msg: "开始...", done: false, error: null, result: null };
+      const job = { stage: "start", cur: 0, total: 1, msg: "正在连接服务器...", done: false, error: null, result: null };
       downloadJobs.set(jobId, job);
-      downloadStudyToDisk(DATA_DIR, body.shareId, body.password, name, (stage, cur, total, msg) => {
-        job.stage = stage; job.cur = cur; job.total = total; job.msg = msg;
-      }).then(r => { job.done = true; job.result = { ...r, name }; })
-        .catch(e => { job.done = true; job.error = e.message; });
-      return sendJson(res, { ok: true, jobId, name });
+      (async () => {
+        try {
+          let name = customName;
+          if (!name) {
+            try {
+              const info = await fetchShareInfo(body.shareId, body.password);
+              name = `${info.patientName || "study"}_${info.patientId || ""}_${info.modality || ""}`.replace(/\s+/g, "_");
+            } catch { name = "study_" + Date.now(); }
+          }
+          const r = await downloadStudyToDisk(DATA_DIR, body.shareId, body.password, name, (stage, cur, total, msg) => {
+            job.stage = stage; job.cur = cur; job.total = total; job.msg = msg;
+          });
+          job.done = true; job.result = { ...r, name };
+        } catch (e) { job.done = true; job.error = e.message; }
+      })();
+      return sendJson(res, { ok: true, jobId });
     }
     if (p === "/api/downloadStatus") {
       const job = downloadJobs.get(u.searchParams.get("jobId"));

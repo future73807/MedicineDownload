@@ -1290,22 +1290,29 @@
       if (!m) return toast("请粘贴有效的分享链接（包含 ids=）", 2500);
       if (!/^\d{4}$/.test(pwd)) return toast("请输入4位密码", 2000);
       btnOk.disabled = true;
+      btnOk.classList.add("waiting");
+      btnOk.textContent = "连接中…";
       body.querySelector(".dl-progress").style.display = "block";
       const msg = body.querySelector("#dlMsg");
       const fill = body.querySelector("#dlBarFill");
+      msg.innerHTML = '<span class="mini-spin"></span>正在连接服务器，请稍候…';
       // Android 原生下载
       if (KStore.hasBridge()) {
         window.__androidEvent = (ev) => {
           if (ev.type === "downloadProgress") {
+            btnOk.textContent = "下载中…";
             if (ev.total > 1) fill.style.width = Math.min(100, (ev.cur / ev.total) * 100) + "%";
-            msg.textContent = ev.msg || "";
+            msg.innerHTML = '<span class="mini-spin"></span>' + (ev.msg || "");
+            if (ev.stage === "zip" || ev.stage === "done") fill.style.width = "100%";
           } else if (ev.type === "downloadDone") {
+            btnOk.classList.remove("waiting");
             if (ev.ok) {
               msg.textContent = "下载完成！正在打开...";
               loadPackage({ kind: "bridge-folder", name: ev.name }).catch(e2 => toast("打开失败: " + e2.message, 3000));
             } else {
               msg.textContent = "下载失败: " + (ev.error || "");
               btnOk.disabled = false;
+              btnOk.textContent = "开始下载";
             }
           }
         };
@@ -1324,15 +1331,22 @@
           const s = await (await fetch("/api/downloadStatus?jobId=" + jobId)).json();
           const fill = body.querySelector("#dlBarFill");
           const msg = body.querySelector("#dlMsg");
-          if (s.total > 1) fill.style.width = Math.min(100, (s.cur / s.total) * 100) + "%";
-          msg.textContent = s.msg || "";
+          if (s.stage === "start" || s.stage === "meta") {
+            msg.innerHTML = '<span class="mini-spin"></span>' + (s.msg || "正在连接服务器…");
+            btnOk.textContent = "连接中…";
+          } else {
+            btnOk.textContent = "下载中…";
+            if (s.total > 1) fill.style.width = Math.min(100, (s.cur / s.total) * 100) + "%";
+            msg.innerHTML = '<span class="mini-spin"></span>' + (s.msg || "");
+            if (s.stage === "zip") fill.style.width = "100%";
+          }
           if (s.done) {
             clearInterval(poll);
-            if (s.error) { msg.textContent = "下载失败: " + s.error; btnOk.disabled = false; return; }
+            btnOk.classList.remove("waiting");
+            if (s.error) { msg.textContent = "下载失败: " + s.error; btnOk.disabled = false; btnOk.textContent = "开始下载"; return; }
             msg.textContent = "下载完成！正在打开...";
-            const pkg = { kind: "server-folder", name: j.name };
+            const pkg = { kind: "server-folder", name: (s.result && s.result.name) || j.name };
             await loadPackage(pkg);
-            showStartupDialog && null;
           }
         }, 700);
       } catch (e) {
