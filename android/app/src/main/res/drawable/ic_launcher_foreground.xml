@@ -5,46 +5,40 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 柔和辉光底（大圆，渐变感用双层叠加） -->
+    <!-- 取景圆环（白色半透明细环） -->
     <path
-        android:fillColor="#14304F"
-        android:pathData="M54,54 m-30,0 a30,30 0 1,1 60,0 a30,30 0 1,1 -60,0" />
-
-    <!-- 影像视口主圆环 -->
-    <path
-        android:strokeColor="#4DA3FF"
-        android:strokeWidth="4.5"
+        android:strokeColor="#66FFFFFF"
+        android:strokeWidth="2.5"
         android:fillColor="#00000000"
-        android:pathData="M54,52 m-23,0 a23,23 0 1,1 46,0 a23,23 0 1,1 -46,0" />
+        android:pathData="M54,54 m-27,0 a27,27 0 1,1 54,0 a27,27 0 1,1 -54,0" />
 
-    <!-- 视口内的脑波影像曲线 -->
+    <!-- 人像剪影：头部 + 肩部（白色） -->
     <path
-        android:strokeColor="#8FC7FF"
-        android:strokeWidth="3.6"
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,40 m-9.5,0 a9.5,9.5 0 1,1 19,0 a9.5,9.5 0 1,1 -19,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,72 C36,61.2 44.5,54.5 54,54.5 C63.5,54.5 72,61.2 72,72 C72,73.4 70.9,74.5 69.5,74.5 L38.5,74.5 C37.1,74.5 36,73.4 36,72 Z" />
+
+    <!-- 扫描线（青色，横穿肩部，两端小托架） -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="3.2"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M38,52 Q44,40 50,52 Q56,64 62,52 Q65,46 70,50" />
-
-    <!-- 扫描线（水平，穿过圆心） -->
+        android:pathData="M30,63 L78,63" />
     <path
-        android:strokeColor="#2E6FB5"
-        android:strokeWidth="1.6"
-        android:fillColor="#00000000"
-        android:pathData="M33,52 L75,52" />
-
-    <!-- 底部进度条（数据下载/加载） -->
-    <path
-        android:fillColor="#2A3A4E"
-        android:pathData="M36,84 h36 a2,2 0 0 1 2,2 v2 a2,2 0 0 1 -2,2 h-36 a2,2 0 0 1 -2,-2 v-2 a2,2 0 0 1 2,-2 z" />
-    <path
-        android:fillColor="#4DA3FF"
-        android:pathData="M36,84 h20 a2,2 0 0 1 2,2 v2 a2,2 0 0 1 -2,2 h-20 a2,2 0 0 1 -2,-2 v-2 a2,2 0 0 1 2,-2 z" />
-
-    <!-- 顶部十字准星 -->
-    <path
-        android:strokeColor="#8FC7FF"
-        android:strokeWidth="2.6"
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="2.4"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M54,12 L54,20 M50,16 L58,16" />
+        android:pathData="M30,58.5 L30,63 M78,58.5 L78,63" />
+
+    <!-- 四角取景刻度（白色半透明） -->
+    <path
+        android:strokeColor="#88FFFFFF"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M24,28 L24,22 L30,22 M78,22 L84,22 L84,28 M84,80 L84,86 L78,86 M30,86 L24,86 L24,80" />
 </vector>

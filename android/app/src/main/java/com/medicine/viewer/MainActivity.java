@@ -137,6 +137,18 @@ public class MainActivity extends AppCompatActivity {
                 "window.__androidEvent && window.__androidEvent(" + json + ")", null));
     }
 
+    private void progress(String stage, int cur, int total, String msg) {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("type", "downloadProgress");
+            o.put("stage", stage);
+            o.put("cur", cur);
+            o.put("total", total);
+            o.put("msg", msg);
+            jsCallback(o.toString());
+        } catch (Exception ignored) { }
+    }
+
     private void toast(String s) {
         runOnUiThread(() -> Toast.makeText(this, s, Toast.LENGTH_SHORT).show());
     }
@@ -208,6 +220,30 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
+        /** 全屏沉浸开关（隐藏/显示系统状态栏与导航栏） */
+        @JavascriptInterface
+        public void setImmersive(final boolean on) {
+            runOnUiThread(() -> {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    var c = getWindow().getInsetsController();
+                    if (c != null) {
+                        if (on) {
+                            c.hide(android.view.WindowInsets.Type.systemBars());
+                            c.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                        } else {
+                            c.show(android.view.WindowInsets.Type.systemBars());
+                        }
+                    }
+                } else {
+                    android.view.View decor = getWindow().getDecorView();
+                    int flags = decor.getSystemUiVisibility();
+                    if (on) flags |= android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | android.view.View.SYSTEM_UI_FLAG_FULLSCREEN | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+                    else flags &= ~(android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | android.view.View.SYSTEM_UI_FLAG_FULLSCREEN | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
+                    decor.setSystemUiVisibility(flags);
+                }
+            });
+        }
+
         /** 解压数据 zip（幂等），返回文件夹名 */
         @JavascriptInterface
         public String prepareZip(String zipName) {
@@ -237,31 +273,40 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        /** 导出数据包 zip 到系统 Download 目录 */
+        /** 导出数据包 zip：立即返回，后台打包+写下载目录，结果经 exportDone 事件回报 */
         @JavascriptInterface
-        public String exportZip(String name) {
-            try {
-                File dir = new File(dataDir, name);
-                if (!new File(dir, "study.json").exists()) return "数据不存在";
-                File zipPath = new File(dataDir, name + ".zip");
-                if (zipPath.exists()) zipPath.delete();
-                zipFolder(dir, zipPath);
-                // 写入系统 Download
-                String displayName = name + ".zip";
-                ContentValues cv = new ContentValues();
-                cv.put(MediaStore.Downloads.DISPLAY_NAME, displayName);
-                cv.put(MediaStore.Downloads.MIME_TYPE, "application/zip");
-                Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
-                if (uri == null) return "无法写入下载目录";
-                OutputStream os = getContentResolver().openOutputStream(uri);
-                FileInputStream in = new FileInputStream(zipPath);
-                copy(in, os);
-                in.close();
-                os.close();
-                return "已保存到下载: " + displayName + " (" + (zipPath.length() / 1048576) + "MB)";
-            } catch (Exception e) {
-                return "导出失败: " + e.getMessage();
-            }
+        public void exportZip(String name) {
+            exportZipAsync(name);
+        }
+
+        private void exportZipAsync(String name) {
+            new Thread(() -> {
+                String result;
+                try {
+                    File dir = new File(dataDir, name);
+                    if (!new File(dir, "study.json").exists()) { result = "数据不存在"; throw new Exception(result); }
+                    progressMsg("正在打包 zip...");
+                    File zipPath = new File(dataDir, name + ".zip");
+                    if (zipPath.exists()) zipPath.delete();
+                    zipFolder(dir, zipPath);
+                    progressMsg("正在写入系统下载目录...");
+                    String displayName = name + ".zip";
+                    ContentValues cv = new ContentValues();
+                    cv.put(MediaStore.Downloads.DISPLAY_NAME, displayName);
+                    cv.put(MediaStore.Downloads.MIME_TYPE, "application/zip");
+                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                    if (uri == null) throw new Exception("无法写入下载目录");
+                    OutputStream os = getContentResolver().openOutputStream(uri);
+                    FileInputStream in = new FileInputStream(zipPath);
+                    copy(in, os);
+                    in.close();
+                    os.close();
+                    result = "已保存到下载: " + displayName + " (" + (zipPath.length() / 1048576) + "MB)";
+                    jsCallback("{\"type\":\"exportDone\",\"ok\":true,\"msg\":" + org.json.JSONObject.quote(result) + "}");
+                } catch (Exception e) {
+                    jsCallback("{\"type\":\"exportDone\",\"ok\":false,\"msg\":" + org.json.JSONObject.quote("导出失败: " + e.getMessage()) + "}");
+                }
+            }).start();
         }
 
         /** 从分享链接下载数据（同网页版链路）。立即返回，取名/下载全在后台线程，前端即时进入等待态 */
@@ -293,18 +338,6 @@ public class MainActivity extends AppCompatActivity {
             }).start();
         }
 
-    /** 下载进度上报 */
-    private void progress(String stage, int cur, int total, String msg) {
-        try {
-            JSONObject o = new JSONObject();
-            o.put("type", "downloadProgress");
-            o.put("stage", stage);
-            o.put("cur", cur);
-            o.put("total", total);
-            o.put("msg", msg);
-            jsCallback(o.toString());
-        } catch (Exception ignored) { }
-    }
     }
 
     // ============ 下载实现（与 tools/download-core.mjs 相同链路） ============
@@ -504,19 +537,17 @@ public class MainActivity extends AppCompatActivity {
         return out;
     }
 
-    /** 下载进度上报到网页 */
-    private void progress(String stage, int cur, int total, String msg) {
+    /** 导出/通用消息上报到网页（exportProgress 类型） */
+    private void progressMsg(String msg) {
         try {
             JSONObject o = new JSONObject();
-            o.put("type", "downloadProgress");
-            o.put("stage", stage);
-            o.put("cur", cur);
-            o.put("total", total);
+            o.put("type", "exportProgress");
             o.put("msg", msg);
             jsCallback(o.toString());
         } catch (Exception ignored) { }
     }
 
+    /** 下载进度上报到网页 */
     private final AtomicInteger doneSync = new AtomicInteger(0);
 
     private String buildGetImageUrl(String vendorCode, String patIdB64, String studyUid,

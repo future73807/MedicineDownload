@@ -1054,6 +1054,13 @@
       if (document.fullscreenElement) document.exitFullscreen();
       else document.documentElement.requestFullscreen().catch(() => { });
     });
+    // 全屏切换时联动 Android 隐藏/显示系统状态栏与导航栏
+    document.addEventListener("fullscreenchange", () => {
+      const on = document.fullscreenElement != null;
+      if (KStore.hasBridge()) {
+        try { window.AndroidBridge.setImmersive(on); } catch { }
+      }
+    });
     $("#btnHome").addEventListener("click", () => showStartupDialog(true));
     // 缩略图列上下滚动（原版右侧箭头）
     const up = document.getElementById("thumbUp"), down = document.getElementById("thumbDown");
@@ -1188,7 +1195,7 @@
     const packages = await KStore.discoverPackages();
     list.innerHTML = "";
     if (!packages.length) {
-      list.appendChild(el("div", "startup-empty", "数据目录为空：可将数据 zip 放入 data 目录，或使用下载功能"));
+      list.appendChild(el("div", "startup-empty", "数据目录为空：可将数据 zip 放入 data 目录，<br>或使用下方「输入网址和密码下载」功能"));
     }
     for (const pkg of packages) {
       const item = el("div", "startup-item");
@@ -1361,8 +1368,17 @@
   function exportZipDirect() {
     if (!App.handle) return toast("请先打开数据");
     if (KStore.hasBridge() && App.handle.kind !== "local-zip" && App.handle.kind !== "local-folder") {
+      const name = App.handle.name;
       toast("正在打包 zip 到系统下载目录...");
-      window.AndroidBridge.exportZip(App.handle.name).then(r => toast(r, 3500));
+      // 等待态：挂 export 事件监听，完成/失败后 toast 结果
+      window.__androidEvent = (ev) => {
+        if (ev.type === "exportProgress") {
+          toast(ev.msg || "正在打包...", 4000);
+        } else if (ev.type === "exportDone") {
+          toast(ev.msg || (ev.ok ? "导出完成" : "导出失败"), 4000);
+        }
+      };
+      window.AndroidBridge.exportZip(name);
       return;
     }
     if (KStore.IS_SERVER && App.handle.kind === "server-folder") {

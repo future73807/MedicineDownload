@@ -1,13 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- 深蓝黑底 + 顶部微光，营造影像工作台质感 -->
-    <path android:fillColor="#141C26" android:pathData="M0,0 h108 v108 h-108 z" />
-    <path android:fillColor="#1B2C3F" android:pathData="M0,0 h108 v50 h-108 z" />
-    <path
-        android:fillColor="#22384F"
-        android:pathData="M54,54 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0" />
+    <!-- 深蓝 → 医疗青 对角渐变背景 -->
+    <path android:pathData="M0,0 h108 v108 h-108 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0" android:startY="0"
+                android:endX="108" android:endY="108"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF16324F" />
+                <item android:offset="0.55" android:color="#FF1B4F72" />
+                <item android:offset="1.0" android:color="#FF1789A9" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- 右上柔光 -->
+    <path android:fillColor="#14FFFFFF" android:pathData="M54,54 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0" />
 </vector>

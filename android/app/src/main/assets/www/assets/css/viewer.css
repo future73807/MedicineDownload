@@ -198,7 +198,7 @@ button { background: none; border: none; color: inherit; font-family: inherit; c
 .startup-item .si-sub { color: #8b95a3; font-size: 12px; margin-top: 2px; }
 .startup-item .si-badge { background: #2f6fb3; color: #fff; font-size: 11px; border-radius: 3px; padding: 2px 6px; flex-shrink: 0; }
 .startup-item .si-badge.zip { background: #6b5b2f; }
-.startup-empty { color: #78828f; text-align: center; padding: 18px 0; }
+.startup-empty { color: #78828f; text-align: center; padding: 18px 0; line-height: 1.8; }
 .startup-actions { display: flex; gap: 10px; margin-top: 6px; }
 .startup-actions button {
   flex: 1; padding: 10px; border: 1px dashed #46536a; border-radius: 4px; color: #cfd5df; font-size: 13px;
