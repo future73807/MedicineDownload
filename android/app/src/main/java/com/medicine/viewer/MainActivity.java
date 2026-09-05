@@ -49,7 +49,9 @@ public class MainActivity extends AppCompatActivity {
     private File dataDir;
     private static final int REQ_IMPORT_ZIP = 1001;
     private static final int REQ_STORAGE = 1002;
+    private static final int REQ_SAF_EXPORT = 1003;
     private String pendingExportName = null;
+    private String pendingExportZipPath = null;
     private static final String IMAGE_SERVER = "https://www.kayicloud.com:11136/";
     private static final String UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36";
     private static final int CONCURRENCY = 6;
@@ -152,6 +154,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void exportZipAsync(String name) {
+        pendingExportName = name;
         new Thread(() -> {
             String result;
             try {
@@ -182,16 +185,25 @@ public class MainActivity extends AppCompatActivity {
                     cv.put(MediaStore.Downloads.IS_PENDING, 0);
                     getContentResolver().update(uri, cv, null, null);
                 }
+                    pendingExportZipPath = zipPath.getAbsolutePath();
                 result = "已保存到下载: " + displayName + " (" + (zipPath.length() / 1048576) + "MB)";
                 jsCallback("{\"type\":\"exportDone\",\"ok\":true,\"msg\":" + org.json.JSONObject.quote(result) + "}");
             } catch (Exception e) {
-                jsCallback("{\"type\":\"exportDone\",\"ok\":false,\"msg\":" + org.json.JSONObject.quote("导出失败: " + e.getMessage()) + "}");
+                // MediaStore 写入失败 → 兜底：弹系统保存对话框（默认下载目录，无需权限）
+                if (pendingExportZipPath != null && new File(pendingExportZipPath).exists()) {
+                    jsCallback("{\"type\":\"exportFallback\",\"msg\":\"自动保存失败，请在弹出的窗口中选择保存位置\"}");
+                    runOnUiThread(() -> {
+                        Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                        i.addCategory(Intent.CATEGORY_OPENABLE);
+                        i.setType("application/zip");
+                        i.putExtra(Intent.EXTRA_TITLE, (pendingExportName != null ? pendingExportName : "study") + ".zip");
+                        startActivityForResult(i, REQ_SAF_EXPORT);
+                    });
+                } else {
+                    jsCallback("{\"type\":\"exportDone\",\"ok\":false,\"msg\":" + org.json.JSONObject.quote("导出失败: " + e.getMessage()) + "}");
+                }
             }
         }).start();
-    }
-
-    private void toast(String s) {
-        runOnUiThread(() -> Toast.makeText(this, s, Toast.LENGTH_SHORT).show());
     }
 
     // ============ JS 桥 ============
@@ -217,8 +229,7 @@ public class MainActivity extends AppCompatActivity {
                             o.put("kind", "bridge-folder");
                             o.put("name", f.getName());
                             try (FileInputStream in = new FileInputStream(sj)) {
-                                String json = readAll(in);
-                                o.put("meta", new JSONObject(json));
+                                o.put("meta", new JSONObject(readAll(in)));
                             } catch (Exception ignored) { }
                         } else if (f.getName().toLowerCase().endsWith(".zip")) {
                             o.put("kind", "bridge-zip");
@@ -555,6 +566,10 @@ public class MainActivity extends AppCompatActivity {
             out.put("error", e.getMessage());
         }
         return out;
+    }
+
+    private void toast(String s) {
+        runOnUiThread(() -> Toast.makeText(this, s, Toast.LENGTH_SHORT).show());
     }
 
     /** 导出/通用消息上报到网页（exportProgress 类型） */

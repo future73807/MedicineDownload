@@ -1389,6 +1389,8 @@
       window.__androidEvent = (ev) => {
         if (ev.type === "exportProgress") {
           showExportSpinner(ev.msg || "正在打包...");
+        } else if (ev.type === "exportFallback") {
+          showExportSpinner(ev.msg || "请在弹出的窗口中选择保存位置");
         } else if (ev.type === "exportDone") {
           hideExportSpinner();
           toast(ev.msg || (ev.ok ? "导出完成" : "导出失败"), 4000);
