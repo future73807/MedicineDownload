@@ -1048,7 +1048,7 @@
     $("#btnAnonymous").addEventListener("click", () => { App.anonymous = true; requestOverlayRedraw(); });
     $("#btnDcmInfo").addEventListener("click", showDcmInfoDialog);
     $("#btnExportImage").addEventListener("click", exportCurrentImage);
-    $("#btnExportZip").addEventListener("click", showExportDialog);
+    $("#btnExportZip").addEventListener("click", exportZipDirect);
     $("#btnAbout").addEventListener("click", showAboutDialog);
     $("#btnFullscreen").addEventListener("click", () => {
       if (document.fullscreenElement) document.exitFullscreen();
@@ -1357,6 +1357,25 @@
   }
 
   // 导出对话框
+  // 一键导出：把当前研究打包 zip 保存到本地（浏览器下载 / Android 写入系统下载目录）
+  function exportZipDirect() {
+    if (!App.handle) return toast("请先打开数据");
+    if (KStore.hasBridge() && App.handle.kind !== "local-zip" && App.handle.kind !== "local-folder") {
+      toast("正在打包 zip 到系统下载目录...");
+      window.AndroidBridge.exportZip(App.handle.name).then(r => toast(r, 3500));
+      return;
+    }
+    if (KStore.IS_SERVER && App.handle.kind === "server-folder") {
+      toast("正在打包 zip，开始下载...");
+      const a = document.createElement("a");
+      a.href = "/api/exportZip?name=" + encodeURIComponent(App.handle.name);
+      a.download = App.handle.name + ".zip";
+      document.body.appendChild(a); a.click(); a.remove();
+      return;
+    }
+    toast("当前数据来自本地文件，无需导出", 2000);
+  }
+
   function showExportDialog() {
     if (!App.handle) return toast("请先打开数据");
     const doServerExport = async () => {

@@ -15,8 +15,7 @@ button { background: none; border: none; color: inherit; font-family: inherit; c
   height: 36px; background: #000; display: flex; align-items: center;
   padding: 0 10px; flex-shrink: 0; justify-content: space-between;
 }
-#mainHeader .logo { display: flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 400; color: #f2f4f8; letter-spacing: 3px; }
-#mainHeader .logo .logo-mark { width: 9px; height: 9px; border-radius: 50%; background: #3d9bff; flex-shrink: 0; }
+#mainHeader .logo { display: flex; align-items: center; font-size: 15px; font-weight: 400; color: #f2f4f8; letter-spacing: 3px; }
 #mainHeader .mod-logo-dot { width: 8px; height: 8px; border-radius: 50%; background: #e33; margin-right: 6px; display: inline-block; }
 .header-btns { display: flex; align-items: center; gap: 2px; }
 .header-btns button { width: 30px; height: 28px; color: #c8cdd6; display: flex; align-items: center; justify-content: center; border-radius: 3px; }
