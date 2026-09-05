@@ -70,8 +70,18 @@ if (doApk) {
   if (!fs.existsSync(APK)) {
     console.warn("未找到 APK，请先执行: cd android && gradlew.bat assembleDebug");
   } else {
-    const apkEntries = [["apk/影像查看器.apk", APK], ...dataEntries];
-    await pack(path.join(OUT, `影像查看器_apk${withData ? "数据包" : "包"}_${stamp}.zip`), apkEntries);
+    // APK 直接复制到 out/（不再套一层 zip）
+    const dest = path.join(OUT, "影像查看器.apk");
+    fs.copyFileSync(APK, dest);
+    console.log("APK 已输出:", dest, `(${(fs.statSync(dest).size / 1048576).toFixed(1)} MB)`);
+    if (withData) {
+      // 含数据时，把 data 目录下现成的数据 zip 一并复制到 out/
+      for (const [, disk] of dataEntries) {
+        const dest2 = path.join(OUT, path.basename(disk));
+        fs.copyFileSync(disk, dest2);
+        console.log("数据已输出:", dest2, `(${(fs.statSync(dest2).size / 1048576).toFixed(1)} MB)`);
+      }
+    }
   }
 }
 console.log(`\n全部完成 (web=${doWeb}, apk=${doApk}, 数据=${withData})`);
