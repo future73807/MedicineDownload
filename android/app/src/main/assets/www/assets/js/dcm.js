@@ -59,6 +59,7 @@
       smallestImage: n("x00280106"),
       largestImage: n("x00280107"),
       tr: s("x00180080"), te: s("x00180081"), // 保留原始字符串（原版显示 TE: 3.0）
+      acquisitionTime: s("x00080032"), // 帧级采集时间（原版覆盖行显示的就是它）
       numberOfFrames: n("x00280008"),
       lossyCompression: s("x00282110") || "",
     };
@@ -213,6 +214,7 @@
         sliceThickness: parsed.sliceThickness, sliceLocation: parsed.sliceLocation,
         imagePosition: parsed.imagePosition, imageOrientation: parsed.imageOrientation,
         pixelSpacing: parsed.pixelSpacing, tr: parsed.tr, te: parsed.te,
+        acquisitionTime: parsed.acquisitionTime,
         bodyPart: parsed.bodyPart, laterality: parsed.laterality,
         protocolName: parsed.protocolName, sopInstanceUID: parsed.sopInstanceUID,
       },

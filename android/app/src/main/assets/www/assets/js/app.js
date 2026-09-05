@@ -483,7 +483,7 @@
       const rLines = [
         stMeta.institution || md.institution || "",
         stMeta.modelName || md.modelName || "",
-        `${stMeta.date || md.studyDate || ""} ${(serMeta.time || stMeta.time || md.studyTime || "").slice(0, 8)}`,
+        `${stMeta.date || md.studyDate || ""} ${fmtDicomTime(md.acquisitionTime || serMeta.time || stMeta.time || md.studyTime)}`,
         serMeta.description || md.seriesDescription || "",
       ].filter(x => x);
       rLines.forEach((t, i) => ctx.fillText(t, w - 10, 7 + i * 19));
@@ -516,6 +516,13 @@
     // 定位线（十字线工具或开启定位线时）
     if ((App.showLocalizer || App.crossMode) && App.viewports.length > 1) drawLocalizerLines(ctx, vp, img, ev);
     if (App.ratioMode) drawRatioLines(ctx, vp, img, vpState);
+  }
+
+  // DICOM 时间 "160643.790709" → "16:06:43"
+  function fmtDicomTime(t) {
+    if (!t) return "";
+    const s = String(t).split(".")[0].padStart(6, "0");
+    return `${s.slice(0, 2)}:${s.slice(2, 4)}:${s.slice(4, 6)}`;
   }
 
   // 磁场强度（原版 MR 显示 FS: 3.00；PET-CT 不显示）
