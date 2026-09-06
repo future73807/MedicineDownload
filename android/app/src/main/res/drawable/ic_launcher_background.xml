@@ -4,8 +4,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- 纯色底：简洁，高对比衬托黑色胶片 -->
+    <!-- 透明背景：胶片前景占满画布，蒙版内全部为胶片 -->
     <path
-        android:fillColor="#1976D2"
+        android:fillColor="#00000000"
         android:pathData="M0,0 h108 v108 h-108 z" />
 </vector>

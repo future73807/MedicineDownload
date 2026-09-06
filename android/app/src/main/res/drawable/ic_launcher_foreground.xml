@@ -5,29 +5,30 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 水平电影胶片：方正直立，居中于安全区 (x 22-86, y 37-71) -->
+    <!-- 电影胶片占满整个画布（无背景，蒙版裁切后即图标） -->
     <path
         android:fillColor="#0A0E13"
-        android:pathData="M25,37 h58 a3,3 0 0 1 3,3 v28 a3,3 0 0 1 -3,3 h-58 a3,3 0 0 1 -3,-3 v-28 a3,3 0 0 1 3,-3 z" />
+        android:pathData="M0,0 h108 v108 h-108 z" />
 
     <!-- 上排 5 齿孔（白色实心，等距对齐） -->
-    <path android:fillColor="#FFFFFF" android:pathData="M28,39.5 h4 a1,1 0 0 1 1,1 v2 a1,1 0 0 1 -1,1 h-4 a1,1 0 0 1 -1,-1 v-2 a1,1 0 0 1 1,-1 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M40,39.5 h4 a1,1 0 0 1 1,1 v2 a1,1 0 0 1 -1,1 h-4 a1,1 0 0 1 -1,-1 v-2 a1,1 0 0 1 1,-1 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M52,39.5 h4 a1,1 0 0 1 1,1 v2 a1,1 0 0 1 -1,1 h-4 a1,1 0 0 1 -1,-1 v-2 a1,1 0 0 1 1,-1 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M64,39.5 h4 a1,1 0 0 1 1,1 v2 a1,1 0 0 1 -1,1 h-4 a1,1 0 0 1 -1,-1 v-2 a1,1 0 0 1 1,-1 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M76,39.5 h4 a1,1 0 0 1 1,1 v2 a1,1 0 0 1 -1,1 h-4 a1,1 0 0 1 -1,-1 v-2 a1,1 0 0 1 1,-1 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M13.5,22 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M32,22 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M50.5,22 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M69,22 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M87.5,22 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
 
     <!-- 下排 5 齿孔（与上排严格对齐） -->
-    <path android:fillColor="#FFFFFF" android:pathData="M28,64.5 h4 a1,1 0 0 1 1,1 v2 a1,1 0 0 1 -1,1 h-4 a1,1 0 0 1 -1,-1 v-2 a1,1 0 0 1 1,-1 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M40,64.5 h4 a1,1 0 0 1 1,1 v2 a1,1 0 0 1 -1,1 h-4 a1,1 0 0 1 -1,-1 v-2 a1,1 0 0 1 1,-1 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M52,64.5 h4 a1,1 0 0 1 1,1 v2 a1,1 0 0 1 -1,1 h-4 a1,1 0 0 1 -1,-1 v-2 a1,1 0 0 1 1,-1 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M64,64.5 h4 a1,1 0 0 1 1,1 v2 a1,1 0 0 1 -1,1 h-4 a1,1 0 0 1 -1,-1 v-2 a1,1 0 0 1 1,-1 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M76,64.5 h4 a1,1 0 0 1 1,1 v2 a1,1 0 0 1 -1,1 h-4 a1,1 0 0 1 -1,-1 v-2 a1,1 0 0 1 1,-1 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M13.5,80 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M32,80 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M50.5,80 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M69,80 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M87.5,80 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
 
     <!-- 字母 X：白色粗体，居中 (54,54) -->
     <path
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="4.4"
+        android:strokeWidth="11"
+        android:strokeLineCap="square"
         android:fillColor="#00000000"
-        android:pathData="M46,46 L62,62 M62,46 L46,62" />
+        android:pathData="M36,36 L72,72 M72,36 L36,72" />
 </vector>

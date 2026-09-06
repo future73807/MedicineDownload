@@ -164,14 +164,7 @@
       showLoading.remove();
       cornerstone.displayImage(vp.elem, img);
       cornerstone.fitToWindow(vp.elem);
-      // 序列级窗宽窗位优先（与原站一致）
-      try {
-        const st = cornerstone.getViewport(vp.elem);
-        if (ser.meta.ww > 1 && ser.meta.wl != null) {
-          st.voi.windowWidth = ser.meta.ww;
-          st.voi.windowCenter = ser.meta.wl;
-        }
-      } catch { }
+      applyFrameVoi(vp, img);
       cornerstone.updateImage(vp.elem);
       vp._skipSyncUntil = Date.now() + 1200;
       try {
@@ -195,6 +188,17 @@
     return cornerstone.loadImage(imageId);
   }
 
+  // 原站行为：每帧应用该帧 DICOM 窗值标签（帧级），而非序列级残留值
+  function applyFrameVoi(vp, img) {
+    try {
+      if (img.windowWidth == null || img.windowCenter == null) return;
+      const st = cornerstone.getViewport(vp.elem);
+      st.voi.windowWidth = img.windowWidth;
+      st.voi.windowCenter = img.windowCenter;
+      cornerstone.setViewport(vp.elem, st);
+    } catch { }
+  }
+
   function scrollVp(vp, dir) {
     if (vp.seriesIdx < 0) return;
     const ser = App.series[vp.seriesIdx];
@@ -204,6 +208,7 @@
     vp.index = ni;
     loadImage(vp.seriesIdx, ni).then(img => {
       cornerstone.displayImage(vp.elem, img);
+      applyFrameVoi(vp, img);
       cornerstone.updateImage(vp.elem);
       onImageChanged(vp);
     }).catch(() => { vp.index -= dir; });
@@ -253,6 +258,7 @@
     vp.index = idx;
     loadImage(vp.seriesIdx, idx).then(img => {
       cornerstone.displayImage(vp.elem, img);
+      applyFrameVoi(vp, img);
       cornerstone.updateImage(vp.elem);
       updateCineBar();
     }).catch(() => { });
@@ -868,6 +874,7 @@
         vp.index = ni;
         loadImage(vp.seriesIdx, ni).then(img => {
           cornerstone.displayImage(vp.elem, img);
+          applyFrameVoi(vp, img);
           cornerstone.updateImage(vp.elem);
           updateCineBar();
         }).catch(() => { });
