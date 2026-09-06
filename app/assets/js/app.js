@@ -118,6 +118,7 @@
     requestAnimationFrame(() => {
       for (const vp of App.viewports) {
         try { cornerstone.resize(vp.elem, true); } catch { }
+        vp._lastPixFp = null; // 尺寸已变，强制下一轮重绘
       }
       requestOverlayRedraw();
     });
@@ -163,7 +164,10 @@
     ]).then(([img]) => {
       showLoading.remove();
       cornerstone.displayImage(vp.elem, img);
+      // canvas 尺寸就绪后再适配窗口，避免按未布局尺寸计算 scale/位置
+      try { cornerstone.resize(vp.elem, true); } catch { }
       cornerstone.fitToWindow(vp.elem);
+      vp.fittedSeries = sIdx;
       applyFrameVoi(vp, img);
       cornerstone.updateImage(vp.elem);
       vp._skipSyncUntil = Date.now() + 1200;
@@ -264,6 +268,11 @@
     loadImage(vp.seriesIdx, idx).then(img => {
       if (vp._imgSeq !== seq) return; // 丢弃过期响应，保持帧号与画面一致
       cornerstone.displayImage(vp.elem, img);
+      // 跨序列跳帧时重新适配窗口，否则沿用旧序列的 scale/translation 会错位
+      if (vp.fittedSeries !== vp.seriesIdx) {
+        try { cornerstone.resize(vp.elem, true); cornerstone.fitToWindow(vp.elem); } catch { }
+        vp.fittedSeries = vp.seriesIdx;
+      }
       applyFrameVoi(vp, img);
       cornerstone.updateImage(vp.elem);
       updateCineBar();
@@ -403,7 +412,8 @@
     const fp2 = [img.imageId, vp.index, vpst.scale.toFixed(4),
       vpst.translation ? Math.round(vpst.translation.x) : 0, vpst.translation ? Math.round(vpst.translation.y) : 0,
       Math.round(vpst.rotation || 0), !!vpst.hflip, !!vpst.vflip,
-      Math.round(vpst.voi.windowWidth), Math.round(vpst.voi.windowCenter), !!vpst.invert].join("|");
+      Math.round(vpst.voi.windowWidth), Math.round(vpst.voi.windowCenter), !!vpst.invert,
+      ee.canvas.width, ee.canvas.height].join("|");
     if (fp2 === vp._lastPixFp) return;
     vp._lastPixFp = fp2;
     // 序列元数据缓存（供同步/定位线）
@@ -1128,10 +1138,26 @@
         }
         for (const vp of App.viewports) {
           try { cornerstone.resize(vp.elem, true); } catch { }
+          vp._lastPixFp = null;
         }
         requestOverlayRedraw();
       }, 150);
     });
+    // 视口 cell 尺寸变化（面板开合/布局重排）：修正 canvas 并强制重绘
+    if (window.ResizeObserver) {
+      App._cellRO = new ResizeObserver(entries => {
+        clearTimeout(App._cellROTimer);
+        App._cellROTimer = setTimeout(() => {
+          for (const vp of App.viewports) {
+            if (!vp.elem || !vp.elem.clientWidth) continue;
+            try { cornerstone.resize(vp.elem, true); } catch { }
+            vp._lastPixFp = null;
+          }
+          requestOverlayRedraw();
+        }, 100);
+      });
+      for (const vp of App.viewports) App._cellRO.observe(vp.cell);
+    }
     // 视口点击（手动同步/选中）
     document.getElementById("viewportArea").addEventListener("click", (e) => {
       const vp = App.viewports.find(v => v.elem === e.target.closest(".vp-inner"));
