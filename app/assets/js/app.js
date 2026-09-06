@@ -160,23 +160,19 @@
     vp.seriesIdx = sIdx;
     vp.index = Math.max(0, Math.min(imgIdx, ser.meta.imageCount - 1));
     vp.imageCache = new Map();
-    const showLoading = el("div", "vp-loading", "加载中...");
-    vp.cell.appendChild(showLoading);
-    showLoading.style.display = "flex";
+    // 不显示"加载中"遮罩：切换期间保持旧画面（与原站一致），新图就绪后一次性替换
     Promise.all([
       loadImage(sIdx, vp.index),
       // 预取相邻两张，滚动更顺滑
       loadImage(sIdx, Math.min(vp.index + 1, ser.meta.imageCount - 1)).catch(() => null),
     ]).then(([img]) => {
-      showLoading.remove();
-      cornerstone.displayImage(vp.elem, img);
+      quietDisplay(vp, img);
       // canvas 尺寸就绪后再适配窗口，避免按未布局尺寸计算 scale/位置
       try { cornerstone.resize(vp.elem, true); } catch { }
       cornerstone.fitToWindow(vp.elem);
       vp.fittedSeries = sIdx;
       applyFrameVoi(vp, img);
-      cornerstone.updateImage(vp.elem);
-      drawPixels(vp); // 同步覆盖 cornerstone 黑帧（不等 rAF，用户不可见）
+      drawPixels(vp); // 自绘是唯一可见渲染（cornerstone 内置渲染已绕开）
       vp._skipSyncUntil = Date.now() + 1200;
       try {
         setupToolsForVp(vp);
@@ -186,7 +182,6 @@
       } catch (e) { console.warn("vp setup", e); }
       if (App.viewports.indexOf(vp) === App.activeVp) { highlightThumb(); updateCineBar(); }
     }).catch((e) => {
-      showLoading.remove();
       console.error(e);
       const empty = el("div", "vp-empty", "序列加载失败");
       vp.cell.appendChild(empty);
@@ -199,15 +194,29 @@
     return cornerstone.loadImage(imageId);
   }
 
-  // 原站行为：每帧应用该帧 DICOM 窗值标签（帧级），而非序列级残留值
-  function applyFrameVoi(vp, img) {
+  // 静默换图：只更新 cornerstone 数据状态并广播 NewImage 事件，不走 displayImage——
+  // 后者会用当前视口同步渲染一帧（黑帧/旧视口状态的新图），正是切换时"闪一下再瞬移"的来源
+  function quietDisplay(vp, img) {
+    const ee = cornerstone.getEnabledElement(vp.elem);
+    ee.image = img;
+    if (!ee.viewport) {
+      try { ee.viewport = cornerstone.getDefaultViewport(ee.canvas, img); } catch { ee.viewport = { scale: 1, translation: { x: 0, y: 0 }, voi: { windowWidth: img.windowWidth || 1, windowCenter: img.windowCenter || 0 } }; }
+    }
     try {
-      if (img.windowWidth == null || img.windowCenter == null) return;
-      const st = cornerstone.getViewport(vp.elem);
-      st.voi.windowWidth = img.windowWidth;
-      st.voi.windowCenter = img.windowCenter;
-      cornerstone.setViewport(vp.elem, st);
+      const ev = new CustomEvent("cornerstonenewimage", { detail: { element: vp.elem, image: img, viewport: ee.viewport } });
+      vp.elem.dispatchEvent(ev);
     } catch { }
+  }
+
+  // 原站行为：每帧应用该帧 DICOM 窗值标签（帧级），而非序列级残留值
+  // 直接改 cornerstone 视口对象的 voi（活引用）：setViewport 会触发内置渲染（黑帧来源）
+  function applyFrameVoi(vp, img) {
+    if (img.windowWidth == null || img.windowCenter == null) return;
+    const ee = cornerstone.getEnabledElement(vp.elem);
+    if (ee && ee.viewport && ee.viewport.voi) {
+      ee.viewport.voi.windowWidth = img.windowWidth;
+      ee.viewport.voi.windowCenter = img.windowCenter;
+    }
   }
 
   function scrollVp(vp, dir) {
@@ -220,10 +229,9 @@
     const seq = (vp._imgSeq = (vp._imgSeq || 0) + 1);
     loadImage(vp.seriesIdx, ni).then(img => {
       if (vp._imgSeq !== seq) return; // 快速翻帧时丢弃过期响应，防止画面回跳闪烁
-      cornerstone.displayImage(vp.elem, img);
+      quietDisplay(vp, img);
       applyFrameVoi(vp, img);
-      cornerstone.updateImage(vp.elem);
-      drawPixels(vp); // 同步覆盖黑帧
+      drawPixels(vp); // 自绘是唯一可见渲染
       onImageChanged(vp);
       const np = ni + 1;
       if (np < ser.meta.imageCount) loadImage(vp.seriesIdx, np).catch(() => { }); // 预取下一帧
@@ -275,15 +283,14 @@
     const seq = (vp._imgSeq = (vp._imgSeq || 0) + 1);
     loadImage(vp.seriesIdx, idx).then(img => {
       if (vp._imgSeq !== seq) return; // 丢弃过期响应，保持帧号与画面一致
-      cornerstone.displayImage(vp.elem, img);
+      quietDisplay(vp, img);
       // 跨序列跳帧时重新适配窗口，否则沿用旧序列的 scale/translation 会错位
       if (vp.fittedSeries !== vp.seriesIdx) {
         try { cornerstone.resize(vp.elem, true); cornerstone.fitToWindow(vp.elem); } catch { }
         vp.fittedSeries = vp.seriesIdx;
       }
       applyFrameVoi(vp, img);
-      cornerstone.updateImage(vp.elem);
-      drawPixels(vp); // 同步覆盖黑帧
+      drawPixels(vp); // 自绘是唯一可见渲染
       updateCineBar();
     }).catch(() => { });
   }
@@ -404,7 +411,7 @@
       } catch { }
     });
     if (App.ratioState) App.ratioState[App.viewports.indexOf(vp)] = null;
-    cornerstone.updateImage(vp.elem);
+    drawPixels(vp);
     toast("已清除标注", 1200);
   }
 
@@ -896,10 +903,9 @@
         const seq = (vp._imgSeq = (vp._imgSeq || 0) + 1);
         loadImage(vp.seriesIdx, ni).then(img => {
           if (vp._imgSeq !== seq) return;
-          cornerstone.displayImage(vp.elem, img);
+          quietDisplay(vp, img);
           applyFrameVoi(vp, img);
-          cornerstone.updateImage(vp.elem);
-          drawPixels(vp); // 同步覆盖黑帧
+          drawPixels(vp); // 自绘是唯一可见渲染
           updateCineBar();
         }).catch(() => { });
       }, 1000 / App.fps);
@@ -954,7 +960,7 @@
           if (st.voi.windowWidth !== e.detail.viewport.voi.windowWidth) {
             st.voi.windowWidth = e.detail.viewport.voi.windowWidth;
             st.voi.windowCenter = e.detail.viewport.voi.windowCenter;
-            cornerstone.updateImage(v.elem);
+            drawPixels(v);
           }
         });
       }
@@ -971,7 +977,7 @@
             const s2 = cornerstone.getViewport(v.elem);
             s2.voi.windowWidth = st.voi.windowWidth;
             s2.voi.windowCenter = st.voi.windowCenter;
-            cornerstone.updateImage(v.elem);
+            drawPixels(v);
           });
         }
         // 缩放平移同步
@@ -982,7 +988,7 @@
             const s2 = cornerstone.getViewport(v.elem);
             s2.scale = st.scale; s2.translation = { ...st.translation };
             s2.rotation = st.rotation; s2.hflip = st.hflip; s2.vflip = st.vflip;
-            cornerstone.updateImage(v.elem);
+            drawPixels(v);
           });
         }
       };
@@ -1200,21 +1206,21 @@
     if (!vp || vp.seriesIdx < 0) return;
     const st = cornerstone.getViewport(vp.elem);
     st.rotation = (st.rotation + deg) % 360;
-    cornerstone.updateImage(vp.elem);
+    drawPixels(vp);
   }
   function flipActive(axis) {
     const vp = App.viewports[App.activeVp];
     if (!vp || vp.seriesIdx < 0) return;
     const st = cornerstone.getViewport(vp.elem);
     if (axis === "h") st.hflip = !st.hflip; else st.vflip = !st.vflip;
-    cornerstone.updateImage(vp.elem);
+    drawPixels(vp);
   }
   function invertActive() {
     const vp = App.viewports[App.activeVp];
     if (!vp || vp.seriesIdx < 0) return;
     const st = cornerstone.getViewport(vp.elem);
     st.invert = !st.invert;
-    cornerstone.updateImage(vp.elem);
+    drawPixels(vp);
   }
 
   function onKeydown(e) {
@@ -1715,7 +1721,7 @@
       else {
         try { st.colormap = cornerstone.getColormap(name); } catch { return toast("伪彩不可用"); }
       }
-      cornerstone.updateImage(vp.elem);
+      drawPixels(vp);
     });
   }
 
