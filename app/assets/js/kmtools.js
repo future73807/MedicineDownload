@@ -146,10 +146,11 @@
         vpst.translation.y = drag.startVp.translation.y + (ev.clientY - drag.startClient.y);
         break;
       case "wl": {
-        const ww = Math.max(1, drag.startVp.voi.windowWidth + dx * 2);
-        const wc = drag.startVp.voi.windowCenter - dy * 2;
-        vpst.voi.windowWidth = ww;
-        vpst.voi.windowCenter = wc;
+        // 与原版 cornerstoneTools 公式一致：range=(max-min)*slope/1024，水平→WW、垂直→WC
+        const img = ee.image;
+        const range = ((img.maxPixelValue - img.minPixelValue) * (img.slope || 1)) / 1024;
+        vpst.voi.windowWidth = Math.max(1, vpst.voi.windowWidth + dx * range);
+        vpst.voi.windowCenter = vpst.voi.windowCenter + dy * range;
         break;
       }
       case "scroll": {
@@ -175,7 +176,6 @@
         }
       }
     }
-    cornerstone.updateImage(vp.elem);
   }
 
   // ---------- 标注 ----------

@@ -401,11 +401,16 @@
       ser.parsedByIndex.set(vp.index, img.parsed);
       ser.curParsed = img.parsed;
     }
-    const ctx = ee.canvas.getContext("2d");
+    // 全尺寸合成帧：黑底+图像先在离屏合成，再一次 drawImage 上主画布（消除黑帧闪烁）
+    if (!vp._frame || vp._frame.width !== ee.canvas.width || vp._frame.height !== ee.canvas.height) {
+      vp._frame = document.createElement("canvas");
+      vp._frame.width = ee.canvas.width; vp._frame.height = ee.canvas.height;
+    }
+    const fctx = vp._frame.getContext("2d");
     const cw = ee.canvas.width, ch = ee.canvas.height;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, cw, ch);
+    fctx.setTransform(1, 0, 0, 1, 0, 0);
+    fctx.fillStyle = "#000";
+    fctx.fillRect(0, 0, cw, ch);
     // 离屏渲染缓存（同图同窗重复利用）
     const lutKey = [img.imageId, Math.round(vpst.voi.windowWidth), Math.round(vpst.voi.windowCenter), !!vpst.invert, vpst.colormap ? (vpst.colormap.getId && vpst.colormap.getId()) : ""].join("|");
     if (!vp._off || vp._offKey !== lutKey) {
@@ -440,13 +445,17 @@
       vp._offKey = lutKey;
     }
     // 应用视口变换
-    ctx.imageSmoothingEnabled = vpst.scale < 2;
-    ctx.save();
-    ctx.translate(cw / 2 + (vpst.translation ? vpst.translation.x : 0), ch / 2 + (vpst.translation ? vpst.translation.y : 0));
-    ctx.rotate((vpst.rotation || 0) * Math.PI / 180);
-    ctx.scale(vpst.hflip ? -vpst.scale : vpst.scale, vpst.vflip ? -vpst.scale : vpst.scale);
-    ctx.drawImage(vp._off, -img.columns / 2, -img.rows / 2);
-    ctx.restore();
+    fctx.imageSmoothingEnabled = vpst.scale < 2;
+    fctx.save();
+    fctx.translate(cw / 2 + (vpst.translation ? vpst.translation.x : 0), ch / 2 + (vpst.translation ? vpst.translation.y : 0));
+    fctx.rotate((vpst.rotation || 0) * Math.PI / 180);
+    fctx.scale(vpst.hflip ? -vpst.scale : vpst.scale, vpst.vflip ? -vpst.scale : vpst.scale);
+    fctx.drawImage(vp._off, -img.columns / 2, -img.rows / 2);
+    fctx.restore();
+    // 一次性上屏
+    const mctx = ee.canvas.getContext("2d");
+    mctx.setTransform(1, 0, 0, 1, 0, 0);
+    mctx.drawImage(vp._frame, 0, 0);
   }
 
   // ============ 覆盖层（文本/标尺/定位线） ============
@@ -563,7 +572,7 @@
     // 10cm 或 5cm 自适应标尺
     const psRow = img.rowPixelSpacing || 1;
     // 屏幕上 1mm = scale 像素（cornerstone scale: 图像像素→屏幕）
-    const pxPerMm = vpState.scale * psRow;
+    const pxPerMm = vpState.scale / psRow; // 屏幕px每毫米 = scale / (mm每图像px)
     let cm = 10;
     const target = w * 0.12; // 理想长度
     while (cm * 10 * pxPerMm > target * 2 && cm > 1) cm = Math.max(1, Math.round(cm / 2));
