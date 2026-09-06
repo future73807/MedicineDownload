@@ -300,15 +300,31 @@
 
   // 全局渲染循环：每帧自绘所有视口（cornerstone 内置渲染器在此环境不可用）
   function startRenderLoop() {
+    let lastOverlay = "";
+    let skip = 0;
     function frame() {
-      for (const vp of App.viewports) {
-        try {
-          const ee = cornerstone.getEnabledElement(vp.elem);
-          if (ee && ee.image) {
-            drawPixels(vp);
-            drawOverlay(vp, { viewport: ee.viewport, element: vp.elem });
-          }
-        } catch { }
+      // 降频：隔帧执行（约30fps，足够流畅且消除高频闪烁）
+      skip ^= 1;
+      if (!skip) {
+        for (const vp of App.viewports) {
+          try {
+            const ee = cornerstone.getEnabledElement(vp.elem);
+            if (ee && ee.image) {
+              drawPixels(vp);
+              // overlay 仅在状态指纹变化时重绘（避免每帧清除重画=闪烁）
+              const fp = [
+                ee.viewport.scale.toFixed(3), ee.viewport.translation ? Math.round(ee.viewport.translation.x) : 0,
+                ee.viewport.translation ? Math.round(ee.viewport.translation.y) : 0,
+                Math.round(ee.viewport.rotation || 0), vp.index, App.currentTool,
+                Math.round(ee.viewport.voi.windowWidth), Math.round(ee.viewport.voi.windowCenter),
+              ].join("|");
+              if (fp !== (vp._lastOverlayFp || "")) {
+                vp._lastOverlayFp = fp;
+                drawOverlay(vp, { viewport: ee.viewport, element: vp.elem });
+              }
+            }
+          } catch { }
+        }
       }
       requestAnimationFrame(frame);
     }
@@ -371,6 +387,13 @@
     const ee = cornerstone.getEnabledElement(vp.elem);
     if (!ee || !ee.image || !ee.canvas) return;
     const img = ee.image, vpst = ee.viewport;
+    // 状态指纹：完全没变则跳过本帧重绘（主画布内容不变）
+    const fp2 = [img.imageId, vp.index, vpst.scale.toFixed(4),
+      vpst.translation ? Math.round(vpst.translation.x) : 0, vpst.translation ? Math.round(vpst.translation.y) : 0,
+      Math.round(vpst.rotation || 0), !!vpst.hflip, !!vpst.vflip,
+      Math.round(vpst.voi.windowWidth), Math.round(vpst.voi.windowCenter), !!vpst.invert].join("|");
+    if (fp2 === vp._lastPixFp) return;
+    vp._lastPixFp = fp2;
     // 序列元数据缓存（供同步/定位线）
     const ser = App.series[vp.seriesIdx];
     if (ser && img.parsed) {
@@ -384,7 +407,7 @@
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, cw, ch);
     // 离屏渲染缓存（同图同窗重复利用）
-    const lutKey = [img.imageId, vpst.voi.windowWidth, vpst.voi.windowCenter, vpst.invert, vpst.colormap ? vpst.colormap.getId && vpst.colormap.getId() : ""].join("|");
+    const lutKey = [img.imageId, Math.round(vpst.voi.windowWidth), Math.round(vpst.voi.windowCenter), !!vpst.invert, vpst.colormap ? (vpst.colormap.getId && vpst.colormap.getId()) : ""].join("|");
     if (!vp._off || vp._offKey !== lutKey) {
       const w = img.columns, h = img.rows;
       if (!vp._off) vp._off = document.createElement("canvas");
