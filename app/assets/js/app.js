@@ -1672,5 +1672,5 @@
     });
   }
 
-  window.KApp = { App, init, setToolActive, loadPackage, showStartupDialog, switchMode };
+  window.KApp = { App, init, setToolActive, loadPackage, showStartupDialog, switchMode, jumpTo };
 })();

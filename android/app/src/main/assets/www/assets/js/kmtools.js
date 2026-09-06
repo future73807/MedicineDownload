@@ -138,7 +138,8 @@
     const vpst = ee.viewport;
     switch (drag.tool) {
       case "zoom":
-        vpst.scale = Math.max(0.05, Math.min(20, drag.startVp.scale * (1 + (-dy) / 120)));
+        // 用累计位移而非单次增量：真机 pointermove 频率高，单次 dy 很小
+        vpst.scale = Math.max(0.05, Math.min(20, drag.startVp.scale * (1 + (drag.startClient.y - ev.clientY) / 120)));
         break;
       case "pan":
         vpst.translation = vpst.translation || { x: 0, y: 0 };
@@ -161,12 +162,12 @@
           const step = drag.scrollAcc > 0 ? 1 : -1;
           drag.scrollAcc -= step * 24;
           const ni = Math.max(0, Math.min(ser.meta.imageCount - 1, vp.index + step));
-          if (ni !== vp.index) { vp.index = ni; jumpTo(vp, ni); }
+          if (ni !== vp.index) { vp.index = ni; if (window.KApp && window.KApp.jumpTo) window.KApp.jumpTo(vp, ni); }
         }
         break;
       }
       case "rotate":
-        vpst.rotation = (drag.startVp.rotation + dx * 0.5) % 360;
+        vpst.rotation = (drag.startVp.rotation + (ev.clientX - drag.startClient.x) * 0.5) % 360;
         break;
       default: {
         // 测量类：更新进行中的标注终点
