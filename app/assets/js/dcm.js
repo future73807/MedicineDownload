@@ -169,9 +169,14 @@
     const signed = parsed.pixelRepresentation === 1;
     let pixelData = parsed.pixelData;
     let min = Infinity, max = -Infinity;
+    const slope = parsed.rescaleSlope || 1;
+    const intercept = parsed.rescaleIntercept || 0;
+    const needModality = slope !== 1 || intercept !== 0;
     const step = Math.max(1, Math.floor(pixelData.length / 50000));
+    // 采样时应用 slope/intercept（物理值域），保证窗宽窗位 fallback 正确
     for (let i = 0; i < pixelData.length; i += step) {
-      const v = pixelData[i];
+      let v = pixelData[i];
+      if (needModality) v = v * slope + intercept;
       if (v < min) min = v; if (v > max) max = v;
     }
     // 有符号 16bit 采样可能漏掉负数边界，用标签兜底
