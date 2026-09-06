@@ -190,8 +190,9 @@
   <script src="assets/js/icons.js?v=1"></script>
   <script src="assets/js/dcm.js?v=5"></script>
   <script src="assets/js/store.js?v=3"></script>
-  <script src="assets/js/app.js?v=19"></script>
+  <script src="assets/js/app.js?v=20"></script>
   <script src="assets/js/kmpr.js?v=2"></script>
+  <script src="assets/js/kmtools.js?v=2"></script>
   <script>
     function startApp() { try { window.KApp.init(); } catch (e) { console.error("init失败", e); const t = document.getElementById("toast"); if (t) { t.textContent = "初始化失败: " + e.message; t.style.display = "block"; } } }
     if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", startApp);

@@ -128,6 +128,7 @@
   }
 
   function bindViewportEvents(vp) {
+    window.KTools.bindElement(vp);
     vp.elem.addEventListener("mousedown", () => { setActiveVp(App.viewports.indexOf(vp)); });
     vp.elem.addEventListener("touchstart", () => { setActiveVp(App.viewports.indexOf(vp)); }, { passive: true });
     vp.elem.addEventListener("wheel", (e) => {
@@ -280,11 +281,17 @@
   const touchTools = ["StackScroll", "Zoom", "Pan", "Wwwc", "Length", "Angle", "EllipticalRoi", "RectangleRoi", "Probe", "CobbAngle", "FreehandRoi"];
 
   function initCornerstoneTools() {
-    cornerstoneTools.init();
+    // 交互已由 KTools 手势引擎接管；cornerstoneTools 仅作内部状态存储。
+    // 其 init() 在部分 WebView 指针检测抛异常（SUPPORT_POINTER_EVENTS），整体隔离。
+    try {
+      cornerstoneTools.init({ mouseEnabled: false, touchEnabled: false });
+    } catch (e) {
+      console.warn("cornerstoneTools.init 失败（不影响使用）:", e.message);
+    }
     [StackScrollTool, ZoomTool, PanTool, WwwcTool, LengthTool, AngleTool, CobbAngleTool,
       EllipticalRoiTool, RectangleRoiTool, ProbeTool, FreehandRoiTool,
       StackScrollMouseWheelTool].forEach(T => {
-        try { cornerstoneTools.addTool(T); } catch (e) { console.warn("addTool", e.message); }
+        try { cornerstoneTools.addTool(T); } catch (e) { }
       });
     try {
       cornerstoneTools.addTool(TextMarkerTool, { configuration: { markers: ["A", "B", "C", "D", "E", "F"] } });
@@ -339,14 +346,7 @@
     document.querySelectorAll("[data-tool]").forEach(b => b.classList.toggle("active", b.dataset.tool === toolId));
     // 特殊工具动作
     if (toolId === "delete") { clearAnnotations(); return; }
-    for (const vp of App.viewports) {
-      ["StackScroll", "Zoom", "Pan", "Wwwc", "Length", "Angle", "CobbAngle", "EllipticalRoi", "RectangleRoi", "Probe", "FreehandRoi", "TextMarker", "Rotate"].forEach(n => {
-        try { cornerstoneTools.setToolPassiveForElement(vp.elem, n); } catch { }
-      });
-      for (const csName of t.cs) {
-        try { cornerstoneTools.setToolActiveForElement(vp.elem, csName, { mouseButtonIndex: 1, isTouchActive: true }); } catch { }
-      }
-    }
+    // 自研手势引擎接管交互（cornerstoneTools 输入层在本环境不可用）
     App.crossMode = toolId === "cross";
     App.ratioMode = toolId === "chestratio";
     requestOverlayRedraw();
@@ -455,6 +455,7 @@
     const ctx = ov.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
+    if (window.KTools) window.KTools.render(ctx, vp, App);
 
     const img = cornerstone.getEnabledElement(vp.elem).image;
     if (!img) return;
@@ -1090,7 +1091,6 @@
       if (!vp) return;
       setActiveVp(App.viewports.indexOf(vp));
       if (App.sync.manualPos) manualSyncPick(vp, e);
-      if (App.ratioMode) handleRatioClick(vp, e);
     });
   }
 
@@ -1531,6 +1531,7 @@
   // ============ 初始化 ============
   async function init() {
     initCornerstoneTools();
+    window.KTools.init(App);
     buildToolbarMenus();
     bindGlobalEvents();
     updatePlayBtns();
