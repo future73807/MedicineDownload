@@ -104,6 +104,7 @@
       App.viewports.push(vp);
       try { cornerstone.enable(inner); } catch (e) { console.error(e); }
       bindViewportEvents(vp);
+      if (App._cellRO) App._cellRO.observe(cell);
       const keepEntry = keep[i];
       if (keepEntry && keepEntry.s >= 0 && keepEntry.s < App.series.length) {
         loadSeriesToVp(vp, keepEntry.s, keepEntry.i);
@@ -407,6 +408,12 @@
   function drawPixels(vp) {
     const ee = cornerstone.getEnabledElement(vp.elem);
     if (!ee || !ee.image || !ee.canvas) return;
+    // 自愈：canvas 分辨率与显示尺寸脱钩（面板开合/布局重排/窗口缩放后）时自动校正，
+    // 否则图像按旧尺寸中心绘制，视觉上偏移
+    const dw = vp.elem.clientWidth, dh = vp.elem.clientHeight;
+    if (dw && (ee.canvas.width !== dw || ee.canvas.height !== dh)) {
+      try { cornerstone.resize(vp.elem, true); } catch { }
+    }
     const img = ee.image, vpst = ee.viewport;
     // 状态指纹：完全没变则跳过本帧重绘（主画布内容不变）
     const fp2 = [img.imageId, vp.index, vpst.scale.toFixed(4),
