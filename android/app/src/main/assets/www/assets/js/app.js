@@ -120,10 +120,15 @@
     }
     updateFocus();
     bindSyncHandlers();
-    // 等布局稳定后修正 canvas 尺寸（enable 时元素可能尚未布局）
+    // 等布局稳定后修正 canvas 尺寸（enable 时元素可能尚未布局；只在尺寸真变化时 resize，避免同值重赋触发纹理重建黑屏）
     requestAnimationFrame(() => {
       for (const vp of App.viewports) {
-        try { cornerstone.resize(vp.elem, true); } catch { }
+        try {
+          const ee = cornerstone.getEnabledElement(vp.elem);
+          if (ee && ee.canvas && vp.elem.clientWidth && (ee.canvas.width !== vp.elem.clientWidth || ee.canvas.height !== vp.elem.clientHeight)) {
+            cornerstone.resize(vp.elem, true);
+          }
+        } catch { }
         vp._lastPixFp = null; // 尺寸已变，强制下一轮重绘
       }
       requestOverlayRedraw();
@@ -167,8 +172,8 @@
       loadImage(sIdx, Math.min(vp.index + 1, ser.meta.imageCount - 1)).catch(() => null),
     ]).then(([img]) => {
       quietDisplay(vp, img);
-      // canvas 尺寸就绪后再适配窗口，避免按未布局尺寸计算 scale/位置
-      try { cornerstone.resize(vp.elem, true); } catch { }
+      // 不调 cornerstone.resize：它会无条件重赋 canvas.width（同值也会清屏），
+      // 手机 WebView 上触发 GPU 纹理重建 → 切换瞬间黑屏 2-3 帧；尺寸变化由 drawPixels 的自愈检查兜底
       cornerstone.fitToWindow(vp.elem);
       vp.fittedSeries = sIdx;
       applyFrameVoi(vp, img);
@@ -285,8 +290,9 @@
       if (vp._imgSeq !== seq) return; // 丢弃过期响应，保持帧号与画面一致
       quietDisplay(vp, img);
       // 跨序列跳帧时重新适配窗口，否则沿用旧序列的 scale/translation 会错位
+      // （不调 cornerstone.resize：同值重赋 canvas.width 触发纹理重建黑屏，自愈检查已兜底尺寸变化）
       if (vp.fittedSeries !== vp.seriesIdx) {
-        try { cornerstone.resize(vp.elem, true); cornerstone.fitToWindow(vp.elem); } catch { }
+        try { cornerstone.fitToWindow(vp.elem); } catch { }
         vp.fittedSeries = vp.seriesIdx;
       }
       applyFrameVoi(vp, img);

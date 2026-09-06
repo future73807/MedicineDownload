@@ -69,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
         if (!dataDir.exists()) dataDir.mkdirs();
 
         webView = new WebView(this);
+        WebView.setWebContentsDebuggingEnabled(true); // 真机调试：远程 inspect 渲染时序
         android.widget.FrameLayout root = new android.widget.FrameLayout(this);
         root.addView(webView, new android.widget.FrameLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
