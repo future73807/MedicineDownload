@@ -46,6 +46,8 @@ import java.util.zip.ZipOutputStream;
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
+    private android.webkit.ValueCallback<Uri[]> filePathCallback;
+    private static final int REQ_WEB_FILE_CHOOSER = 1004;
     private File dataDir;
     private static final int REQ_IMPORT_ZIP = 1001;
     private static final int REQ_STORAGE = 1002;
@@ -108,6 +110,33 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 return null;
+            }
+        });
+
+        // WebChromeClient：让网页里的 <input type=file> 能弹出系统文件选择器
+        webView.setWebChromeClient(new android.webkit.WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView view, android.webkit.ValueCallback<Uri[]> callback,
+                                             android.webkit.WebChromeClient.FileChooserParams params) {
+                if (filePathCallback != null) {
+                    filePathCallback.onReceiveValue(null);
+                }
+                filePathCallback = callback;
+                try {
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("*/*");
+                    String[] mimes = params.getAcceptTypes();
+                    if (mimes != null && mimes.length > 0 && mimes[0] != null && mimes[0].contains("zip")) {
+                        i.setType("application/zip");
+                    }
+                    startActivityForResult(Intent.createChooser(i, "选择数据 zip 包"), REQ_WEB_FILE_CHOOSER);
+                } catch (Exception e) {
+                    filePathCallback = null;
+                    toast("无法打开文件选择器: " + e.getMessage());
+                    return false;
+                }
+                return true;
             }
         });
 
@@ -723,6 +752,47 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ============ zip 导入 ============
+    /** SAF 导入 zip：复制到应用数据目录并解压，完成后 importDone 事件 */
+    private void importZipFromUri(Uri uri) {
+        toast("开始导入...");
+        new Thread(() -> {
+            try {
+                String zipName = queryDisplayName(uri);
+                if (!zipName.toLowerCase().endsWith(".zip")) zipName += ".zip";
+                File local = new File(dataDir, zipName);
+                InputStream in = getContentResolver().openInputStream(uri);
+                FileOutputStream fo = new FileOutputStream(local);
+                copy(in, fo);
+                in.close();
+                fo.close();
+                File target = new File(dataDir, zipName.replaceAll("(?i)\\.zip$", ""));
+                if (!new File(target, "study.json").exists()) {
+                    target.mkdirs();
+                    ZipInputStream zi = new ZipInputStream(new FileInputStream(local));
+                    ZipEntry e;
+                    int n = 0;
+                    while ((e = zi.getNextEntry()) != null) {
+                        if (e.isDirectory()) continue;
+                        File out = new File(target, e.getName().replace("..", ""));
+                        out.getParentFile().mkdirs();
+                        FileOutputStream fo2 = new FileOutputStream(out);
+                        copy(zi, fo2);
+                        fo2.close();
+                        n++;
+                    }
+                    zi.close();
+                    toast("导入完成: " + n + " 个文件");
+                } else {
+                    toast("已存在，跳过解压");
+                }
+                jsCallback("{\"type\":\"importDone\",\"ok\":true}");
+            } catch (Exception ex) {
+                toast("导入失败: " + ex.getMessage());
+                jsCallback("{\"type\":\"importDone\",\"ok\":false}");
+            }
+        }).start();
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -741,42 +811,20 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_IMPORT_ZIP && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            Uri uri = data.getData();
-            toast("开始导入...");
-            new Thread(() -> {
-                try {
-                    String zipName = queryDisplayName(uri);
-                    if (!zipName.toLowerCase().endsWith(".zip")) zipName += ".zip";
-                    File local = new File(dataDir, zipName);
-                    InputStream in = getContentResolver().openInputStream(uri);
-                    FileOutputStream fo = new FileOutputStream(local);
-                    copy(in, fo);
-                    in.close();
-                    fo.close();
-                    // 解压到同名目录
-                    File target = new File(dataDir, zipName.replaceAll("(?i)\\.zip$", ""));
-                    target.mkdirs();
-                    ZipInputStream zi = new ZipInputStream(new FileInputStream(local));
-                    ZipEntry e;
-                    int n = 0;
-                    while ((e = zi.getNextEntry()) != null) {
-                        if (e.isDirectory()) continue;
-                        File out = new File(target, e.getName().replace("..", ""));
-                        out.getParentFile().mkdirs();
-                        FileOutputStream fo2 = new FileOutputStream(out);
-                        copy(zi, fo2);
-                        fo2.close();
-                        n++;
-                    }
-                    zi.close();
-                    toast("导入完成: " + n + " 个文件");
-                    jsCallback("{\"type\":\"importDone\",\"ok\":true}");
-                } catch (Exception ex) {
-                    toast("导入失败: " + ex.getMessage());
-                    jsCallback("{\"type\":\"importDone\",\"ok\":false}");
+        if (requestCode == REQ_WEB_FILE_CHOOSER) {
+            if (filePathCallback != null) {
+                Uri[] uris = null;
+                if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                    uris = new Uri[]{ data.getData() };
+                    importZipFromUri(data.getData());
                 }
-            }).start();
+                filePathCallback.onReceiveValue(uris);
+                filePathCallback = null;
+            }
+            return;
+        }
+        if (requestCode == REQ_IMPORT_ZIP && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            importZipFromUri(data.getData());
         }
     }
 

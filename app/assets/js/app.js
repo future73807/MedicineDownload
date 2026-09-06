@@ -1264,6 +1264,23 @@
 
   // 选择本地 zip
   function pickLocalZip() {
+    // Android 端：走原生导入（SAF 复制到应用数据目录并解压，避免大文件 OOM）
+    if (KStore.hasBridge()) {
+      window.__androidEvent = (ev) => {
+        if (ev.type === "importDone") {
+          if (ev.ok) {
+            toast("导入完成，正在刷新列表...");
+            // 刷新开屏列表
+            window.KApp.showStartupDialog(true);
+          } else {
+            toast("导入失败", 3000);
+          }
+        }
+      };
+      window.AndroidBridge.openImportZip();
+      return;
+    }
+    // 桌面浏览器：内存解析
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".zip,application/zip";
