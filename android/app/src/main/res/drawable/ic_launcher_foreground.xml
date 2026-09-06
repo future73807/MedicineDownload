@@ -5,28 +5,9 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 电影胶片占满整个画布（无背景，蒙版裁切后即图标） -->
+    <!-- 字母 X：黑色粗体，居中于胶片窗口 (54,54)；胶片框/齿孔由位图背景层提供（用户素材） -->
     <path
-        android:fillColor="#0A0E13"
-        android:pathData="M0,0 h108 v108 h-108 z" />
-
-    <!-- 上排 5 齿孔（白色实心，等距对齐） -->
-    <path android:fillColor="#FFFFFF" android:pathData="M13.5,22 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M32,22 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M50.5,22 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M69,22 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M87.5,22 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
-
-    <!-- 下排 5 齿孔（与上排严格对齐） -->
-    <path android:fillColor="#FFFFFF" android:pathData="M13.5,80 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M32,80 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M50.5,80 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M69,80 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M87.5,80 h7 a1.5,1.5 0 0 1 1.5,1.5 v3 a1.5,1.5 0 0 1 -1.5,1.5 h-7 a1.5,1.5 0 0 1 -1.5,-1.5 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
-
-    <!-- 字母 X：白色粗体，居中 (54,54) -->
-    <path
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#111111"
         android:strokeWidth="11"
         android:strokeLineCap="square"
         android:fillColor="#00000000"

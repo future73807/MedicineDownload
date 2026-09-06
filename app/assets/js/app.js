@@ -206,12 +206,16 @@
     ni = Math.max(0, Math.min(ni, ser.meta.imageCount - 1));
     if (ni === vp.index) return;
     vp.index = ni;
+    const seq = (vp._imgSeq = (vp._imgSeq || 0) + 1);
     loadImage(vp.seriesIdx, ni).then(img => {
+      if (vp._imgSeq !== seq) return; // 快速翻帧时丢弃过期响应，防止画面回跳闪烁
       cornerstone.displayImage(vp.elem, img);
       applyFrameVoi(vp, img);
       cornerstone.updateImage(vp.elem);
       onImageChanged(vp);
-    }).catch(() => { vp.index -= dir; });
+      const np = ni + 1;
+      if (np < ser.meta.imageCount) loadImage(vp.seriesIdx, np).catch(() => { }); // 预取下一帧
+    }).catch(() => { if (vp._imgSeq === seq) vp.index -= dir; });
     updateCineBar();
   }
 
@@ -256,7 +260,9 @@
 
   function jumpTo(vp, idx) {
     vp.index = idx;
+    const seq = (vp._imgSeq = (vp._imgSeq || 0) + 1);
     loadImage(vp.seriesIdx, idx).then(img => {
+      if (vp._imgSeq !== seq) return; // 丢弃过期响应，保持帧号与画面一致
       cornerstone.displayImage(vp.elem, img);
       applyFrameVoi(vp, img);
       cornerstone.updateImage(vp.elem);
@@ -872,7 +878,9 @@
         let ni = vp.index + 1;
         if (ni >= ser.meta.imageCount) ni = 0;
         vp.index = ni;
+        const seq = (vp._imgSeq = (vp._imgSeq || 0) + 1);
         loadImage(vp.seriesIdx, ni).then(img => {
+          if (vp._imgSeq !== seq) return;
           cornerstone.displayImage(vp.elem, img);
           applyFrameVoi(vp, img);
           cornerstone.updateImage(vp.elem);
