@@ -57,8 +57,13 @@
     const hit = App.imageCache.get(k);
     if (hit) return Promise.resolve(hit);
     const ser = App.series[sIdx];
-    if (!ser) return Promise.reject(new Error("序列不存在"));
-    const rel = ser.meta.images[iIdx].file;
+    const entry = ser && ser.meta && ser.meta.images ? ser.meta.images[iIdx] : null;
+    if (!ser || !entry || !entry.file) {
+      // 数据包尚未加载完成/索引未就绪：明确拒绝（调用方 catch 后保持旧画面），不抛 TypeError
+      (window.__kwLog = window.__kwLog || []).push(imageId + " not-ready ser=" + (ser ? 1 : 0) + " entry=" + (entry ? 1 : 0));
+      return Promise.reject(new Error("帧数据尚未就绪: " + imageId));
+    }
+    const rel = entry.file;
     return App.handle.readFile(rel).then((buf) => {
       const parsed = parseDicomFile(buf);
       const img = toCornerstoneImage(parsed, imageId);
@@ -171,6 +176,7 @@
       vp.fittedSeries = sIdx;
       applyFrameVoi(vp, img);
       cornerstone.updateImage(vp.elem);
+      drawPixels(vp); // 同步覆盖 cornerstone 黑帧（不等 rAF，用户不可见）
       vp._skipSyncUntil = Date.now() + 1200;
       try {
         setupToolsForVp(vp);
@@ -217,6 +223,7 @@
       cornerstone.displayImage(vp.elem, img);
       applyFrameVoi(vp, img);
       cornerstone.updateImage(vp.elem);
+      drawPixels(vp); // 同步覆盖黑帧
       onImageChanged(vp);
       const np = ni + 1;
       if (np < ser.meta.imageCount) loadImage(vp.seriesIdx, np).catch(() => { }); // 预取下一帧
@@ -276,6 +283,7 @@
       }
       applyFrameVoi(vp, img);
       cornerstone.updateImage(vp.elem);
+      drawPixels(vp); // 同步覆盖黑帧
       updateCineBar();
     }).catch(() => { });
   }
@@ -471,6 +479,7 @@
     fctx.drawImage(vp._off, -img.columns / 2, -img.rows / 2);
     fctx.restore();
     // 一次性上屏
+    // 上屏
     const mctx = ee.canvas.getContext("2d");
     mctx.setTransform(1, 0, 0, 1, 0, 0);
     mctx.drawImage(vp._frame, 0, 0);
@@ -890,6 +899,7 @@
           cornerstone.displayImage(vp.elem, img);
           applyFrameVoi(vp, img);
           cornerstone.updateImage(vp.elem);
+          drawPixels(vp); // 同步覆盖黑帧
           updateCineBar();
         }).catch(() => { });
       }, 1000 / App.fps);
