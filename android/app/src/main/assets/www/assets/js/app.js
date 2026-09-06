@@ -1564,7 +1564,11 @@
   }
 
   function closeAllDrops() {
-    document.querySelectorAll(".tb-drop.open").forEach(d => d.classList.remove("open"));
+    document.querySelectorAll(".tb-drop.open").forEach(d => {
+      d.classList.remove("open");
+      const m = d.querySelector(".tb-menu");
+      if (m) { m.style.display = "none"; m.style.visibility = ""; }
+    });
   }
   // 打开下拉：用 fixed 定位挂到视口，避免被工具栏 overflow 裁剪/遮挡
   function openDrop(drop) {
@@ -1573,10 +1577,13 @@
     const btn = drop.querySelector("button");
     const menu = drop.querySelector(".tb-menu");
     if (!btn || !menu) return;
-    const r = btn.getBoundingClientRect();
+    // 挂到 body 下，彻底脱离工具栏的层叠上下文
+    document.body.appendChild(menu);
     menu.style.position = "fixed";
-    menu.style.visibility = "hidden";
     menu.style.display = "block";
+    menu.style.visibility = "hidden";
+    menu.style.zIndex = 3000;
+    const r = btn.getBoundingClientRect();
     const mw = menu.offsetWidth || 170, mh = menu.offsetHeight || 100;
     let left = r.left;
     if (left + mw > window.innerWidth - 8) left = Math.max(8, window.innerWidth - mw - 8);
@@ -1585,6 +1592,8 @@
     menu.style.left = left + "px";
     menu.style.top = top + "px";
     menu.style.visibility = "visible";
+    // 记录归属，关闭时收回并还原 display
+    menu._ownerDrop = drop;
   }
   function bindDrop(id, onItem) {
     const drop = document.getElementById(id);
@@ -1595,9 +1604,16 @@
       if (drop.classList.contains("open")) closeAllDrops();
       else openDrop(drop);
     });
-    drop.querySelectorAll("[data-tool],[data-mode],[data-cmap]").forEach(item => {
-      item.addEventListener("click", () => { closeAllDrops(); if (onItem) onItem(item); });
-    });
+    const bindItems = () => {
+      menu_.querySelectorAll("[data-tool],[data-mode],[data-cmap]").forEach(item => {
+        if (item._menuBound) return;
+        item._menuBound = true;
+        item.addEventListener("click", () => { closeAllDrops(); if (onItem) onItem(item); });
+      });
+    };
+    const menu_ = drop.querySelector(".tb-menu");
+    bindItems();
+    // openDrop 会把 menu 移到 body，绑定仍在元素上不会丢
   }
 
   function buildToolbarMenus() {
