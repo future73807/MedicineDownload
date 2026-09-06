@@ -106,12 +106,6 @@
       {
         const wcStr = byteTagSearch(bytes, 0x0028, 0x1050, pxOff);
         const wwStr = byteTagSearch(bytes, 0x0028, 0x1051, pxOff);
-        (window.__dcmDebug = window.__dcmDebug || []).push({
-          sop: image.sopInstanceUID ? image.sopInstanceUID.slice(-8) : "?",
-          parsedWW: image.windowWidth, parsedWC: image.windowCenter,
-          wwStr, wcStr, pxOff
-        });
-        if (window.__dcmDebug.length > 8) window.__dcmDebug.shift();
         if (wcStr != null) { const f = parseFloat(wcStr); if (!isNaN(f)) image.windowCenter = f; }
         if (wwStr != null) { const f = parseFloat(wwStr); if (!isNaN(f)) image.windowWidth = f; }
       }

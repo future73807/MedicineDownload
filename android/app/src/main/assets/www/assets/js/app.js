@@ -323,30 +323,26 @@
   // 全局渲染循环：每帧自绘所有视口（cornerstone 内置渲染器在此环境不可用）
   function startRenderLoop() {
     let lastOverlay = "";
-    let skip = 0;
     function frame() {
-      // 降频：隔帧执行（约30fps，足够流畅且消除高频闪烁）
-      skip ^= 1;
-      if (!skip) {
-        for (const vp of App.viewports) {
-          try {
-            const ee = cornerstone.getEnabledElement(vp.elem);
-            if (ee && ee.image) {
-              drawPixels(vp);
-              // overlay 仅在状态指纹变化时重绘（避免每帧清除重画=闪烁）
-              const fp = [
-                ee.viewport.scale.toFixed(3), ee.viewport.translation ? Math.round(ee.viewport.translation.x) : 0,
-                ee.viewport.translation ? Math.round(ee.viewport.translation.y) : 0,
-                Math.round(ee.viewport.rotation || 0), vp.index, App.currentTool,
-                Math.round(ee.viewport.voi.windowWidth), Math.round(ee.viewport.voi.windowCenter),
-              ].join("|");
-              if (fp !== (vp._lastOverlayFp || "")) {
-                vp._lastOverlayFp = fp;
-                drawOverlay(vp, { viewport: ee.viewport, element: vp.elem });
-              }
+      for (const vp of App.viewports) {
+        try {
+          const ee = cornerstone.getEnabledElement(vp.elem);
+          if (ee && ee.image) {
+            // 每帧强制重绘（cornerstone 黑帧随时可能插入，必须持续覆盖）
+            drawPixels(vp);
+            // overlay 仅在状态指纹变化时重绘（避免每帧清除重画=闪烁）
+            const fp = [
+              ee.viewport.scale.toFixed(3), ee.viewport.translation ? Math.round(ee.viewport.translation.x) : 0,
+              ee.viewport.translation ? Math.round(ee.viewport.translation.y) : 0,
+              Math.round(ee.viewport.rotation || 0), vp.index, App.currentTool,
+              Math.round(ee.viewport.voi.windowWidth), Math.round(ee.viewport.voi.windowCenter),
+            ].join("|");
+            if (fp !== (vp._lastOverlayFp || "")) {
+              vp._lastOverlayFp = fp;
+              drawOverlay(vp, { viewport: ee.viewport, element: vp.elem });
             }
-          } catch { }
-        }
+          }
+        } catch { }
       }
       requestAnimationFrame(frame);
     }
@@ -415,15 +411,8 @@
       try { cornerstone.resize(vp.elem, true); } catch { }
     }
     const img = ee.image, vpst = ee.viewport;
-    // 状态指纹：完全没变则跳过本帧重绘（主画布内容不变）
-    const fp2 = [img.imageId, vp.index, vpst.scale.toFixed(4),
-      vpst.translation ? Math.round(vpst.translation.x) : 0, vpst.translation ? Math.round(vpst.translation.y) : 0,
-      Math.round(vpst.rotation || 0), !!vpst.hflip, !!vpst.vflip,
-      Math.round(vpst.voi.windowWidth), Math.round(vpst.voi.windowCenter), !!vpst.invert,
-      ee.canvas.width, ee.canvas.height].join("|");
-    if (fp2 === vp._lastPixFp) return;
-    vp._lastPixFp = fp2;
-    // 序列元数据缓存（供同步/定位线）
+    // 每帧无条件重绘：cornerstone 内置渲染器会被事件触发并在本环境画出黑帧，
+    // 与自绘帧竞争同一画布产生闪烁——只有持续覆盖才能压制（_off 的 LUT 结果有缓存，重绘仅两次 drawImage）
     const ser = App.series[vp.seriesIdx];
     if (ser && img.parsed) {
       ser.parsedByIndex = ser.parsedByIndex || new Map();
