@@ -5,6 +5,31 @@
 
   const VR_BINARY = { OB: 1, OW: 1, OF: 1, OD: 1, US: 1, SS: 1, UL: 1, SL: 1, FL: 1, FD: 1, AT: 1 };
 
+  // 字节级标签搜索兜底：部分文件（如 Siemens swi）含不规范的未定长 SQ，
+  // dicomParser 遍历会错位丢掉其后的标签，这里直接按 tag 字节模式查找
+  function byteTagSearch(bytes, group, elem, stopOffset) {
+    const g0 = group & 0xff, g1 = (group >> 8) & 0xff, e0 = elem & 0xff, e1 = (elem >> 8) & 0xff;
+    const end = stopOffset || bytes.length - 8;
+    for (let i = 132; i < end; i++) {
+      if (bytes[i] === g0 && bytes[i + 1] === g1 && bytes[i + 2] === e0 && bytes[i + 3] === e1) {
+        const vrOk = { DS: 1, IS: 1, TM: 1, CS: 1, LO: 1, SH: 1, DA: 1, PN: 1, UI: 1, ST: 1, LT: 1, UT: 1, AE: 1, AS: 1 }[String.fromCharCode(bytes[i + 4], bytes[i + 5])];
+        if (!vrOk) continue;
+        const len = bytes[i + 6] | (bytes[i + 7] << 8);
+        if (len <= 0 || len > 512) continue;
+        let str = "";
+        for (let k = 0; k < len; k++) str += String.fromCharCode(bytes[i + 8 + k]);
+        return str.trim();
+      }
+    }
+    return null;
+  }
+  function pixelDataOffset(bytes) {
+    for (let i = 132; i < bytes.length - 8; i++) {
+      if (bytes[i] === 0xe0 && bytes[i + 1] === 0x7f && bytes[i + 2] === 0x10 && bytes[i + 3] === 0x00) return i;
+    }
+    return bytes.length - 8;
+  }
+
   // 解析单个 DICOM 文件（ArrayBuffer）→ 结构化对象
   function parseDicomFile(buffer) {
     const bytes = new Uint8Array(buffer);
@@ -63,6 +88,54 @@
       numberOfFrames: n("x00280008"),
       lossyCompression: s("x00282110") || "",
     };
+
+    // 字节级兜底：dicomParser 在不规范未定长 SQ（如部分 Siemens swi）后错位丢标签时，
+    // 对覆盖信息/渲染必需的帧级标签直接按字节搜索
+    {
+      const pxOff = pixelDataOffset(bytes);
+      const rescue = (t, key, isNum) => {
+        if (image[key] != null && image[key] !== "") return;
+        const g = parseInt(t.slice(1, 5), 16), e = parseInt(t.slice(5, 9), 16);
+        const str = byteTagSearch(bytes, g, e, pxOff);
+        if (str == null) return;
+        if (isNum) { const f = parseFloat(str); if (!isNaN(f)) image[key] = f; }
+        else image[key] = str;
+      };
+      // WC/WW 无条件取文件中第一组标签（DICOM 语义：第一组为默认窗值）——
+      // 错位解析可能把数据区伪标签当窗值（如 swi 的 -132/6440）
+      {
+        const wcStr = byteTagSearch(bytes, 0x0028, 0x1050, pxOff);
+        const wwStr = byteTagSearch(bytes, 0x0028, 0x1051, pxOff);
+        (window.__dcmDebug = window.__dcmDebug || []).push({
+          sop: image.sopInstanceUID ? image.sopInstanceUID.slice(-8) : "?",
+          parsedWW: image.windowWidth, parsedWC: image.windowCenter,
+          wwStr, wcStr, pxOff
+        });
+        if (window.__dcmDebug.length > 8) window.__dcmDebug.shift();
+        if (wcStr != null) { const f = parseFloat(wcStr); if (!isNaN(f)) image.windowCenter = f; }
+        if (wwStr != null) { const f = parseFloat(wwStr); if (!isNaN(f)) image.windowWidth = f; }
+      }
+      rescue("x00180080", "tr", false);
+      rescue("x00180081", "te", false);
+      rescue("x00080032", "acquisitionTime", false);
+      rescue("x00200013", "instanceNumber", true);
+      if (image.imagePosition == null) {
+        const ipp = byteTagSearch(bytes, 0x0020, 0x0032, pxOff);
+        image.imagePosition = ipp ? ipp.split("\\").map(parseFloat) : null;
+      }
+      if (image.imageOrientation == null) {
+        const iop = byteTagSearch(bytes, 0x0020, 0x0037, pxOff);
+        image.imageOrientation = iop ? iop.split("\\").map(parseFloat) : null;
+      }
+      if (image.pixelSpacing == null) {
+        const psp = byteTagSearch(bytes, 0x0028, 0x0030, pxOff);
+        image.pixelSpacing = psp ? psp.split("\\").map(parseFloat) : null;
+      }
+      if (image.sliceThickness == null) {
+        rescue("x00180050", "sliceThickness", true);
+      }
+      if (!image.acquisitionTime) rescue("x00080032", "acquisitionTime", false);
+    }
 
     // 像素数据
     const pxEl = ds.elements.x7fe00010;
@@ -139,8 +212,14 @@
       const js = bytes.subarray(f.position, f.position + f.length);
       const decoder = new dec.Decoder(js);
       const out = decoder.decode();
-      image.rows = decoder.frame.dimY; image.cols = decoder.frame.dimX;
-      image.bitsAllocated = decoder.frame.precision <= 8 ? 8 : 16;
+      // 解码器对部分流（如 Siemens mosaic）的尺寸报告不可靠：输出像素数足够时以 DICOM 头为准
+      const needPx = image.rows * image.cols;
+      if (image.rows && image.cols && out.length >= needPx) {
+        image.bitsAllocated = decoder.frame.precision <= 8 ? 8 : 16;
+      } else {
+        image.rows = decoder.frame.dimY; image.cols = decoder.frame.dimX;
+        image.bitsAllocated = decoder.frame.precision <= 8 ? 8 : 16;
+      }
       return out; // Uint8Array 或 Uint16Array
     };
     if (fragments.length === 1 || !(image.numberOfFrames > 1)) {
